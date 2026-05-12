@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: habitat-postgres
+    environment:
+      POSTGRES_DB: habitat_db
+      POSTGRES_USER: habitat
+      POSTGRES_PASSWORD: habitat
+    ports:
+      - "5432:5432"
+    volumes:
+      - habitat-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U habitat -d habitat_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: habitat-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - habitat-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  habitat-pg:
+  habitat-redis:

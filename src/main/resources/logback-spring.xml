@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{requestId:-}] [%X{userId:-}] %-5level %logger{36} - %msg%n"/>
+
+    <!-- Local + dev — human-readable -->
+    <springProfile name="!prod">
+        <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+        </root>
+    </springProfile>
+
+    <!-- Production — JSON structured logs for CloudWatch / Loki / Datadog -->
+    <springProfile name="prod">
+        <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeMdcKeyName>requestId</includeMdcKeyName>
+                <includeMdcKeyName>userId</includeMdcKeyName>
+                <includeMdcKeyName>traceId</includeMdcKeyName>
+                <includeMdcKeyName>spanId</includeMdcKeyName>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+        </root>
+    </springProfile>
+
+</configuration>

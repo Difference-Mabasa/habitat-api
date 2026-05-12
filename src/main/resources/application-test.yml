@@ -1,0 +1,23 @@
+# Test profile — Testcontainers bring up PostgreSQL + Redis.
+# Datasource URL is rewritten by @DynamicPropertySource in test classes.
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+  flyway:
+    enabled: true
+    validate-on-migrate: true
+
+app:
+  jwt:
+    secret: test-secret-test-secret-test-secret-test-secret-32bytes
+    access-ttl: PT5M
+    refresh-ttl: PT15M
+  cors:
+    origins: http://localhost:5173
+
+logging:
+  level:
+    com.habitat: DEBUG

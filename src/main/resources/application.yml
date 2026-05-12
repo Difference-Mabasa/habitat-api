@@ -1,0 +1,65 @@
+# Default profile = local. Production overrides via application-prod.yml.
+
+spring:
+  application:
+    name: habitat-api
+  profiles:
+    default: local
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:habitat_db}
+    username: ${DB_USERNAME:habitat}
+    password: ${DB_PASSWORD:habitat}
+  jpa:
+    hibernate:
+      ddl-auto: none        # never auto-generate schema — Flyway owns it
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+        format_sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+    validate-on-migrate: true   # day-one — backroom got drift because this was false
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  cache:
+    type: redis
+
+server:
+  port: ${PORT:8080}
+  servlet:
+    context-path: /
+  error:
+    include-stacktrace: never
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-secret-please-replace-in-prod-32bytes-or-more}
+    access-ttl: PT15M
+    refresh-ttl: P7D
+  cors:
+    origins: ${CORS_ORIGINS:http://localhost:5173}
+  storage:
+    type: ${STORAGE_TYPE:local}
+    local-path: ${UPLOAD_DIR:./uploads}
+
+logging:
+  level:
+    root: INFO
+    com.habitat: DEBUG  # local only — overridden in prod
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{requestId:-}] [%X{userId:-}] %-5level %logger{36} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized

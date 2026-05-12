@@ -1,0 +1,33 @@
+# Production profile — explicit safe defaults. NEVER inherit dev defaults.
+# Every env var below MUST be set; the app should fail fast on missing values.
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      connection-timeout: 5000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  jpa:
+    open-in-view: false
+    show-sql: false
+  flyway:
+    validate-on-migrate: true
+
+app:
+  storage:
+    type: s3
+
+logging:
+  level:
+    root: INFO
+    com.habitat: INFO     # never DEBUG in prod (backroom shipped DEBUG once)
+    org.hibernate.SQL: WARN
+
+management:
+  server:
+    port: 8081            # internal management port — not exposed publicly
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
