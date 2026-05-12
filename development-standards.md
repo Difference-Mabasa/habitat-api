@@ -306,8 +306,18 @@ Backroom declared Redis as a dependency and never put a `@Cacheable` on anything
 
 Backroom had `RestTemplate` with no timeout and no circuit breaker on payment calls — a hung Ozow connection blocked a servlet thread indefinitely. Habitat:
 
-- **Every outbound HTTP client has explicit timeouts.** Connect 3s, read 10s.
-- **Every outbound call goes through Resilience4j:**
+- **The standard client is `RestClient`** (Spring 6.1+ / Boot 3.2+). Not `RestTemplate` (maintenance mode), not `FeignClient` / Spring Cloud OpenFeign (extra dep tree, reflection-heavy, interface ceremony we don't need for a small number of outbound providers).
+- **When we want declarative call sites** (e.g. once we have multiple internal services, or just for readability when a provider has many endpoints), wrap them in **`@HttpExchange` interfaces** backed by the same `RestClient`. That's Spring's first-party answer to "give me Feign without Feign":
+  ```java
+  @HttpExchange(url = "https://api.ozow.com")
+  interface OzowClient {
+      @PostExchange("/PostPaymentRequest")
+      OzowResponse createPayment(@RequestBody OzowPaymentRequest body);
+  }
+  ```
+  No Spring Cloud dep, same testability, same Resilience4j integration.
+- **Every outbound HTTP call has explicit timeouts.** Connect 3s, read 10s — set on the `RestClient` bean.
+- **Every outbound call is wrapped in Resilience4j on the *calling* method**, never on the bean:
   ```java
   @CircuitBreaker(name = "ozow", fallbackMethod = "ozowFallback")
   @Retry(name = "ozow")        // maxAttempts=2, exponential backoff
