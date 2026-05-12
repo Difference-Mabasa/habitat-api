@@ -25,6 +25,7 @@ public final class ApiRoutes {
     // Users
     public static final String USERS = BASE + "/users";
     public static final String USERS_ME = USERS + "/me";
+    public static final String USERS_ME_ACTIVE_ROLE = USERS_ME + "/active-role";
 
     private ApiRoutes() {}
 }

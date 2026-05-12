@@ -13,7 +13,9 @@ public final class ErrorMessages {
     public static final String JWT_INVALID = "Your session token is invalid or expired.";
     public static final String JWT_SECRET_TOO_SHORT = "JWT secret must be at least 32 bytes.";
     public static final String ROLE_NOT_SELF_ASSIGNABLE = "That role cannot be self-assigned on registration.";
+    public static final String ROLE_NOT_OWNED = "You don't have that role on your account.";
     public static final String AUTH_REQUIRED = "Authentication required.";
+    public static final String REFRESH_TOKEN_REVOKED = "Your session has been revoked. Sign in again.";
 
     // Resources
     public static final String USER_NOT_FOUND = "User not found.";

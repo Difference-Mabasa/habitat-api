@@ -1,13 +1,13 @@
 package com.habitat.api.security;
 
 import com.habitat.api.constants.JwtConstants;
+import com.habitat.api.service.TokenBlocklistService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,21 +18,18 @@ import java.io.IOException;
 
 /**
  * Reads the {@code Authorization: Bearer ...} header, verifies the JWT, checks
- * the jti blocklist in Redis, and populates the SecurityContext.
+ * the blocklist via {@link TokenBlocklistService}, and populates the
+ * SecurityContext.
  *
  * Skips itself when no header is present — anonymous requests go through and
  * SecurityConfig's matchers decide whether to allow them.
  */
 @Component
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwt;
-    private final StringRedisTemplate redis;
-
-    public JwtAuthenticationFilter(JwtService jwt, @Autowired(required = false) StringRedisTemplate redis) {
-        this.jwt = jwt;
-        this.redis = redis;
-    }
+    private final TokenBlocklistService blocklist;
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
@@ -46,7 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = header.substring(JwtConstants.BEARER_PREFIX.length()).trim();
         try {
             HabitatPrincipal principal = jwt.verifyAccess(token);
-            if (isBlocklisted(principal.jti())) {
+            if (blocklist.isRevoked(principal.jti())) {
                 chain.doFilter(req, res);
                 return;
             }
@@ -67,11 +64,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } finally {
             MDC.remove("userId");
         }
-    }
-
-    private boolean isBlocklisted(String jti) {
-        if (redis == null || jti == null) return false;
-        Boolean has = redis.hasKey(JwtConstants.BLOCKLIST_KEY_PREFIX + jti);
-        return Boolean.TRUE.equals(has);
     }
 }

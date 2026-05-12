@@ -7,9 +7,11 @@ import com.habitat.api.dto.auth.RegisterRequest;
 import com.habitat.api.entity.User;
 import com.habitat.api.enums.Role;
 import com.habitat.api.exception.ConflictException;
+import com.habitat.api.exception.ResourceNotFoundException;
 import com.habitat.api.exception.UnauthorizedException;
 import com.habitat.api.exception.ValidationException;
 import com.habitat.api.repository.UserRepository;
+import com.habitat.api.security.HabitatPrincipal;
 import com.habitat.api.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -30,6 +32,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwt;
+    private final TokenBlocklistService blocklist;
 
     public AuthResponse register(RegisterRequest req) {
         if (req.role() == null) {
@@ -63,6 +66,51 @@ public class AuthService {
         }
         log.info("user signed in: {}", user.getId());
         return tokensFor(user);
+    }
+
+    /**
+     * Verify a refresh token, blocklist its jti, and issue a new access +
+     * refresh pair. The old refresh token is single-use — replaying it
+     * after refresh yields 401.
+     */
+    public AuthResponse refresh(String refreshToken) {
+        HabitatPrincipal principal = jwt.verifyRefresh(refreshToken);
+        if (blocklist.isRevoked(principal.jti())) {
+            throw new UnauthorizedException(ErrorMessages.REFRESH_TOKEN_REVOKED);
+        }
+        User user = userRepository.findById(principal.userId())
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.USER_NOT_FOUND));
+
+        // Single-use: revoke the presented refresh before issuing a new pair.
+        if (principal.expiresAt() != null) {
+            blocklist.revoke(principal.jti(), principal.expiresAt());
+        }
+        log.info("token refreshed for user: {}", user.getId());
+        return tokensFor(user);
+    }
+
+    /**
+     * Revoke the access token currently authenticating the caller. The
+     * caller-supplied refresh token is also revoked when present so the
+     * full session ends in one call.
+     */
+    public void logout(HabitatPrincipal accessPrincipal, String refreshToken) {
+        if (accessPrincipal != null && accessPrincipal.expiresAt() != null) {
+            blocklist.revoke(accessPrincipal.jti(), accessPrincipal.expiresAt());
+        }
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            try {
+                HabitatPrincipal refreshPrincipal = jwt.verifyRefresh(refreshToken);
+                if (refreshPrincipal.expiresAt() != null) {
+                    blocklist.revoke(refreshPrincipal.jti(), refreshPrincipal.expiresAt());
+                }
+            } catch (UnauthorizedException ignored) {
+                // refresh was already invalid — fine, nothing to revoke.
+            }
+        }
+        if (accessPrincipal != null) {
+            log.info("user signed out: {}", accessPrincipal.userId());
+        }
     }
 
     private AuthResponse tokensFor(User user) {

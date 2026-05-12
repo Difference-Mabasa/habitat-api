@@ -252,7 +252,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Coverage -->
+            <!-- Coverage — 90% line + branch on touched packages. -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -265,6 +265,38 @@
                         <id>report</id>
                         <phase>verify</phase>
                         <goals><goal>report</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>coverage-gate</id>
+                        <phase>verify</phase>
+                        <goals><goal>check</goal></goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.90</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.90</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                            <excludes>
+                                <exclude>com/habitat/api/HabitatApiApplication.class</exclude>
+                                <exclude>com/habitat/api/config/**</exclude>
+                                <exclude>com/habitat/api/dto/**</exclude>
+                                <exclude>com/habitat/api/entity/**</exclude>
+                                <exclude>com/habitat/api/enums/**</exclude>
+                                <exclude>com/habitat/api/constants/**</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

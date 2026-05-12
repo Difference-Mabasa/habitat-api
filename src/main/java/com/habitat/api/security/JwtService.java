@@ -116,7 +116,8 @@ public class JwtService {
         Set<Role> roles = ((java.util.List<String>) claims.get(JwtConstants.CLAIM_ROLES))
                 .stream().map(Role::valueOf).collect(java.util.stream.Collectors.toUnmodifiableSet());
         Role active = Role.valueOf(claims.get(JwtConstants.CLAIM_ACTIVE_ROLE, String.class));
-        return new HabitatPrincipal(id, email, roles, active, claims.getId());
+        Instant expiresAt = claims.getExpiration() == null ? null : claims.getExpiration().toInstant();
+        return new HabitatPrincipal(id, email, roles, active, claims.getId(), expiresAt);
     }
 
     public record IssuedToken(String token, String jti, Instant expiresAt) {}
