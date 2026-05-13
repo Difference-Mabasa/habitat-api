@@ -27,5 +27,21 @@ public final class ApiRoutes {
     public static final String USERS_ME = USERS + "/me";
     public static final String USERS_ME_ACTIVE_ROLE = USERS_ME + "/active-role";
 
+    // Notifications
+    public static final String NOTIFICATIONS = BASE + "/notifications";
+    public static final String NOTIFICATIONS_UNREAD_COUNT = NOTIFICATIONS + "/unread-count";
+    public static final String NOTIFICATIONS_READ_ALL = NOTIFICATIONS + "/read-all";
+
+    // Per-user preferences
+    public static final String PREFERENCES = BASE + "/preferences";
+    public static final String PREFERENCES_NOTIFICATIONS = PREFERENCES + "/notifications";
+
+    /**
+     * UI route the welcome notification's CTA points at. Not an API path —
+     * shipped here so any future surface that needs to deep-link into the
+     * onboarding journey reads it from one place.
+     */
+    public static final String UI_PROFILE_ONBOARDING = "/profile/onboarding";
+
     private ApiRoutes() {}
 }

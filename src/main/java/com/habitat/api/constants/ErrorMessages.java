@@ -19,6 +19,9 @@ public final class ErrorMessages {
 
     // Resources
     public static final String USER_NOT_FOUND = "User not found.";
+    public static final String NOTIFICATION_NOT_FOUND = "Notification not found.";
+    public static final String SYSTEM_IN_APP_CANNOT_BE_MUTED =
+            "Account & security in-app alerts can't be muted.";
 
     // Storage
     public static final String INVALID_FILE_PATH = "Invalid file path.";

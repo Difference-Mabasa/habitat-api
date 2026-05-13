@@ -6,6 +6,7 @@ import com.habitat.api.dto.auth.LoginRequest;
 import com.habitat.api.dto.auth.RegisterRequest;
 import com.habitat.api.entity.User;
 import com.habitat.api.enums.Role;
+import com.habitat.api.event.UserRegisteredEvent;
 import com.habitat.api.exception.ConflictException;
 import com.habitat.api.exception.ResourceNotFoundException;
 import com.habitat.api.exception.UnauthorizedException;
@@ -16,6 +17,7 @@ import com.habitat.api.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +35,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwt;
     private final TokenBlocklistService blocklist;
+    private final ApplicationEventPublisher events;
 
     public AuthResponse register(RegisterRequest req) {
         if (req.role() == null) {
@@ -54,6 +57,11 @@ public class AuthService {
                 .build();
         user = userRepository.save(user);
         log.info("user registered: {}", user.getId());
+
+        // Side effects (welcome notification, future welcome email, analytics)
+        // listen via @TransactionalEventListener(AFTER_COMMIT) so they only
+        // run if the registration actually commits.
+        events.publishEvent(new UserRegisteredEvent(user.getId(), user));
 
         return tokensFor(user);
     }

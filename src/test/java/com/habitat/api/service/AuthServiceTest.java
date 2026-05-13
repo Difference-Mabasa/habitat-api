@@ -42,6 +42,7 @@ class AuthServiceTest {
     @Mock PasswordEncoder passwordEncoder;
     @Mock JwtService jwt;
     @Mock TokenBlocklistService blocklist;
+    @Mock org.springframework.context.ApplicationEventPublisher events;
 
     @InjectMocks AuthService authService;
 
@@ -98,6 +99,14 @@ class AuthServiceTest {
         assertThat(captor.getValue().getPasswordHash()).isEqualTo("hashed");
         assertThat(captor.getValue().getRoles()).containsExactly(Role.USER);
         assertThat(captor.getValue().isEmailVerified()).isFalse();
+
+        // A UserRegisteredEvent is published exactly once for downstream
+        // listeners (welcome notification, future welcome email).
+        ArgumentCaptor<com.habitat.api.event.UserRegisteredEvent> eventCaptor =
+                ArgumentCaptor.forClass(com.habitat.api.event.UserRegisteredEvent.class);
+        verify(events).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().userId()).isEqualTo(USER_ID);
+        assertThat(eventCaptor.getValue().user().getEmail()).isEqualTo("new@example.co.za");
     }
 
     @Test
