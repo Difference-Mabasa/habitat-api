@@ -46,7 +46,7 @@ class WelcomeNotificationListenerTest {
                 org.mockito.ArgumentMatchers.eq(NotificationType.WELCOME),
                 org.mockito.ArgumentMatchers.eq(NotificationMessages.WELCOME_TITLE),
                 bodyCap.capture(),
-                org.mockito.ArgumentMatchers.eq(ApiRoutes.UI_PROFILE_ONBOARDING),
+                org.mockito.ArgumentMatchers.eq(ApiRoutes.UI_PROFILE),
                 org.mockito.ArgumentMatchers.eq(NotificationMessages.WELCOME_ACTION_LABEL),
                 org.mockito.ArgumentMatchers.isNull());
 

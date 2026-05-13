@@ -1,6 +1,7 @@
 package com.habitat.api.service;
 
 import com.habitat.api.constants.ErrorMessages;
+import com.habitat.api.dto.user.UpdateProfileRequest;
 import com.habitat.api.dto.user.UserMeResponse;
 import com.habitat.api.entity.User;
 import com.habitat.api.enums.Role;
@@ -15,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -95,6 +97,72 @@ class UserServiceTest {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.switchActiveRole(USER_ID, Role.USER))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    // ── updateProfile ─────────────────────────────────────────────────
+
+    @Test
+    void updateProfile_applies_only_non_null_fields() {
+        User user = userOf(USER_ID, "a@example.co.za", Role.USER, Role.USER);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+
+        UserMeResponse out = userService.updateProfile(USER_ID, new UpdateProfileRequest(
+                null, null,                       // firstName, surname (untouched)
+                "+27 71 111 2222",                // phone
+                null,                              // bio
+                List.of("Walkable", "Pet-friendly"), // interests
+                null, null, null,                  // jobTitle, employer, education
+                null, null, null, null, null,      // address fields
+                -26.2041, 28.0473,                 // lat/lng
+                null                                // area
+        ));
+
+        assertThat(user.getFirstName()).isEqualTo("Test");
+        assertThat(user.getSurname()).isEqualTo("User");
+        assertThat(user.getPhone()).isEqualTo("+27 71 111 2222");
+        assertThat(user.getInterests()).containsExactly("Walkable", "Pet-friendly");
+        assertThat(user.getLatitude()).isEqualTo(-26.2041);
+        assertThat(user.getLongitude()).isEqualTo(28.0473);
+        assertThat(out.phone()).isEqualTo("+27 71 111 2222");
+    }
+
+    @Test
+    void updateProfile_blank_string_clears_to_null() {
+        User user = userOf(USER_ID, "a@example.co.za", Role.USER, Role.USER);
+        user.setBio("an existing bio");
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+
+        userService.updateProfile(USER_ID, new UpdateProfileRequest(
+                null, null, null,
+                "   ",                              // blank bio
+                null, null, null, null,
+                null, null, null, null, null, null, null, null));
+
+        assertThat(user.getBio()).isNull();
+    }
+
+    @Test
+    void updateProfile_trims_first_name_and_surname() {
+        User user = userOf(USER_ID, "a@example.co.za", Role.USER, Role.USER);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+
+        userService.updateProfile(USER_ID, new UpdateProfileRequest(
+                "  Lerato  ", "  Khumalo  ",
+                null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null));
+
+        assertThat(user.getFirstName()).isEqualTo("Lerato");
+        assertThat(user.getSurname()).isEqualTo("Khumalo");
+    }
+
+    @Test
+    void updateProfile_throws_when_user_missing() {
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.updateProfile(USER_ID, new UpdateProfileRequest(
+                "x", null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null)))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 

@@ -38,10 +38,14 @@ public final class ApiRoutes {
 
     /**
      * UI route the welcome notification's CTA points at. Not an API path —
-     * shipped here so any future surface that needs to deep-link into the
-     * onboarding journey reads it from one place.
+     * shipped here so any future surface that needs to deep-link to the
+     * user's editable profile reads it from one place.
+     *
+     * Previously pointed at {@code /profile/onboarding} (a now-removed
+     * wizard); /profile is the single edit surface that hydrates from
+     * {@code GET /users/me} and autosaves per field group on blur.
      */
-    public static final String UI_PROFILE_ONBOARDING = "/profile/onboarding";
+    public static final String UI_PROFILE = "/profile";
 
     private ApiRoutes() {}
 }

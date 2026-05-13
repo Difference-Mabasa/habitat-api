@@ -2,6 +2,7 @@ package com.habitat.api.controller;
 
 import com.habitat.api.constants.ApiRoutes;
 import com.habitat.api.dto.user.SwitchActiveRoleRequest;
+import com.habitat.api.dto.user.UpdateProfileRequest;
 import com.habitat.api.dto.user.UserMeResponse;
 import com.habitat.api.security.SecurityUtils;
 import com.habitat.api.service.UserService;
@@ -24,6 +25,11 @@ public class UserController {
     @GetMapping("/me")
     public UserMeResponse me() {
         return userService.getMe(security.requireUserId());
+    }
+
+    @PatchMapping("/me")
+    public UserMeResponse updateMe(@Valid @RequestBody UpdateProfileRequest req) {
+        return userService.updateProfile(security.requireUserId(), req);
     }
 
     @PatchMapping("/me/active-role")

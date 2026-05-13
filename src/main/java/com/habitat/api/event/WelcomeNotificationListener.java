@@ -43,7 +43,7 @@ public class WelcomeNotificationListener {
                     NotificationType.WELCOME,
                     NotificationMessages.WELCOME_TITLE,
                     body,
-                    ApiRoutes.UI_PROFILE_ONBOARDING,
+                    ApiRoutes.UI_PROFILE,
                     NotificationMessages.WELCOME_ACTION_LABEL,
                     null);
         } catch (RuntimeException ex) {
