@@ -20,6 +20,8 @@ public final class ErrorMessages {
     // Resources
     public static final String USER_NOT_FOUND = "User not found.";
     public static final String NOTIFICATION_NOT_FOUND = "Notification not found.";
+    public static final String PROPERTY_NOT_FOUND = "Property not found.";
+    public static final String UNIT_NOT_FOUND = "Unit not found.";
     public static final String SYSTEM_IN_APP_CANNOT_BE_MUTED =
             "Account & security in-app alerts can't be muted.";
 

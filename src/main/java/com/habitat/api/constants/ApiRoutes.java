@@ -36,6 +36,10 @@ public final class ApiRoutes {
     public static final String PREFERENCES = BASE + "/preferences";
     public static final String PREFERENCES_NOTIFICATIONS = PREFERENCES + "/notifications";
 
+    // Properties + units
+    public static final String PROPERTIES = BASE + "/properties";
+    public static final String UNITS = BASE + "/units";
+
     /**
      * UI route the welcome notification's CTA points at. Not an API path —
      * shipped here so any future surface that needs to deep-link to the

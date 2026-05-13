@@ -1,9 +1,11 @@
 package com.habitat.api.config;
 
+import com.habitat.api.constants.ApiRoutes;
 import com.habitat.api.constants.PublicEndpoints;
 import com.habitat.api.security.JwtAuthenticationFilter;
 import com.habitat.api.security.RequestIdFilter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -85,6 +87,11 @@ public class SecurityConfig {
                 for (String path : PublicEndpoints.PATHS) {
                     reg.requestMatchers(path).permitAll();
                 }
+                // Browse + property detail are anonymous-readable so the
+                // landing-page hero search works without signing in.
+                // Writes (POST/PATCH/DELETE) fall through to authenticated().
+                reg.requestMatchers(HttpMethod.GET, ApiRoutes.PROPERTIES).permitAll();
+                reg.requestMatchers(HttpMethod.GET, ApiRoutes.PROPERTIES + "/*").permitAll();
                 reg.requestMatchers("/actuator/**").hasRole("ADMIN");
                 reg.anyRequest().authenticated();
             })
