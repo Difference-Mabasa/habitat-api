@@ -15,12 +15,17 @@ import com.habitat.api.security.JwtAuthenticationFilter;
 import com.habitat.api.security.JwtService;
 import com.habitat.api.service.AuthService;
 import com.habitat.api.service.TokenBlocklistService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -32,7 +37,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -50,6 +54,21 @@ class AuthControllerTest {
     @MockBean JwtAuthenticationFilter jwtFilter;
 
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    // addFilters=false bypasses Spring Security's filter chain, so
+    // SecurityMockMvcRequestPostProcessors.authentication(...) has nowhere to
+    // populate SecurityContextHolder for the request. We seed the context
+    // manually for the /logout tests and clear it afterwards.
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private static Authentication authFor(HabitatPrincipal principal) {
+        return new UsernamePasswordAuthenticationToken(
+                principal, null,
+                java.util.List.of(new SimpleGrantedAuthority("ROLE_" + principal.activeRole())));
+    }
 
     // ── /register ──────────────────────────────────────────────────────────
 
@@ -146,16 +165,13 @@ class AuthControllerTest {
     // ── /logout ────────────────────────────────────────────────────────────
 
     @Test
-    @WithMockUser
     void logout_with_principal_returns_204() throws Exception {
         HabitatPrincipal principal = new HabitatPrincipal(
                 USER_ID, "a@example.co.za", Set.of(Role.TENANT), Role.TENANT,
                 "jti", Instant.now().plusSeconds(900));
-        var auth = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-                principal, null, java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_TENANT")));
+        SecurityContextHolder.getContext().setAuthentication(authFor(principal));
 
         mvc.perform(post(ApiRoutes.AUTH_LOGOUT)
-                        .with(authentication(auth))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(new LogoutRequest("rt"))))
@@ -165,15 +181,13 @@ class AuthControllerTest {
     }
 
     @Test
-    @WithMockUser
     void logout_with_no_body_revokes_only_access_token() throws Exception {
         HabitatPrincipal principal = new HabitatPrincipal(
                 USER_ID, "a@example.co.za", Set.of(Role.TENANT), Role.TENANT,
                 "jti", Instant.now().plusSeconds(900));
-        var auth = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-                principal, null, java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_TENANT")));
+        SecurityContextHolder.getContext().setAuthentication(authFor(principal));
 
-        mvc.perform(post(ApiRoutes.AUTH_LOGOUT).with(authentication(auth)).with(csrf()))
+        mvc.perform(post(ApiRoutes.AUTH_LOGOUT).with(csrf()))
                 .andExpect(status().isNoContent());
 
         verify(authService).logout(eq(principal), eq(null));
