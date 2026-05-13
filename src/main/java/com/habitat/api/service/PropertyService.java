@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -55,12 +56,22 @@ public class PropertyService {
     private final UserRepository users;
     private final SecurityUtils security;
 
+    public enum SortKey {
+        NEWEST, PRICE, BEDROOMS, SIZE
+    }
+
+    public enum SortDirection {
+        ASC, DESC
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<PropertySummary> search(
             List<String> locations,
             List<UnitType> unitTypes,
             BigDecimal maxPrice,
             Integer minBeds,
+            SortKey sortKey,
+            SortDirection sortDirection,
             int page,
             int size
     ) {
@@ -94,10 +105,17 @@ public class PropertyService {
                         .filter(p -> matchesAnyLocation(p, cleanLocations))
                         .toList();
 
-        int total = filtered.size();
+        // Sort in Java for the same reason as the location filter: the
+        // headline-unit fields (cheapest unit price / bedrooms / sqm) live
+        // on Unit, not Property, so SQL sorting would need a correlated
+        // subquery and the catalogue is small enough that an in-memory
+        // sort costs nothing measurable.
+        List<Property> sorted = sortProperties(filtered, sortKey, sortDirection);
+
+        int total = sorted.size();
         int from = Math.min(page * size, total);
         int to = Math.min(from + size, total);
-        List<PropertySummary> content = filtered.subList(from, to).stream()
+        List<PropertySummary> content = sorted.subList(from, to).stream()
                 .map(PropertySummary::from)
                 .toList();
         int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / size);
@@ -112,6 +130,47 @@ public class PropertyService {
     }
 
     private static final int MAX_FETCH = 200;
+
+    /**
+     * Order the filtered set by the requested key. NEWEST sorts on
+     * {@code createdAt}; PRICE / BEDROOMS / SIZE all pull from the cheapest
+     * available unit (the "headline" unit shown on a PropertyCard).
+     * Properties without an available unit drop to the end of the list
+     * regardless of direction so the gallery never shows blank cards.
+     */
+    private static List<Property> sortProperties(List<Property> input, SortKey key, SortDirection dir) {
+        SortKey effectiveKey = key == null ? SortKey.NEWEST : key;
+        SortDirection effectiveDir = dir == null
+                ? (effectiveKey == SortKey.NEWEST ? SortDirection.DESC : SortDirection.ASC)
+                : dir;
+
+        Comparator<Property> base = switch (effectiveKey) {
+            case NEWEST    -> Comparator.comparing(Property::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
+            case PRICE     -> Comparator.comparing(p -> headlineBigDecimal(p, Unit::getPrice), Comparator.nullsLast(Comparator.naturalOrder()));
+            case BEDROOMS  -> Comparator.comparing(p -> headlineInteger(p, Unit::getBedrooms), Comparator.nullsLast(Comparator.naturalOrder()));
+            case SIZE      -> Comparator.comparing(p -> headlineInteger(p, Unit::getSqm), Comparator.nullsLast(Comparator.naturalOrder()));
+        };
+        Comparator<Property> ordered = effectiveDir == SortDirection.DESC ? base.reversed() : base;
+        return input.stream().sorted(ordered).toList();
+    }
+
+    private static BigDecimal headlineBigDecimal(Property p, java.util.function.Function<Unit, BigDecimal> pick) {
+        return p.getUnits().stream()
+                .filter(u -> u.getStatus() == UnitStatus.AVAILABLE)
+                .map(pick)
+                .filter(v -> v != null)
+                .min(BigDecimal::compareTo)
+                .orElse(null);
+    }
+
+    private static Integer headlineInteger(Property p, java.util.function.Function<Unit, Integer> pick) {
+        return p.getUnits().stream()
+                .filter(u -> u.getStatus() == UnitStatus.AVAILABLE)
+                .map(pick)
+                .filter(v -> v != null)
+                .min(Integer::compareTo)
+                .orElse(null);
+    }
 
     private static boolean matchesAnyLocation(Property p, List<String> locations) {
         return locations.stream().anyMatch(loc -> {

@@ -74,7 +74,7 @@ class PropertyServiceTest {
         when(properties.search(eq(PropertyStatus.LISTED), eq(""), isNull(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(page);
 
-        PageResponse<PropertySummary> out = service.search(null, null, null, null, 0, 20);
+        PageResponse<PropertySummary> out = service.search(null, null, null, null, null, null, 0, 20);
 
         assertThat(out.totalElements()).isEqualTo(1);
         assertThat(out.content()).hasSize(1);
@@ -87,7 +87,7 @@ class PropertyServiceTest {
         when(properties.search(any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
-        service.search(null, List.of(), null, null, 0, 20);
+        service.search(null, List.of(), null, null, null, null, 0, 20);
 
         verify(properties).search(eq(PropertyStatus.LISTED), eq(""), isNull(), isNull(), isNull(), any(Pageable.class));
     }
@@ -98,7 +98,7 @@ class PropertyServiceTest {
                 .thenReturn(new PageImpl<>(List.of()));
 
         service.search(List.of("Sandton"), List.of(UnitType.APARTMENT, UnitType.STUDIO),
-                new BigDecimal("20000"), 2, 1, 10);
+                new BigDecimal("20000"), 2, null, null, 1, 10);
 
         // Locations are matched in Java — SQL always sees empty location.
         verify(properties).search(
@@ -123,7 +123,7 @@ class PropertyServiceTest {
                 .thenReturn(new PageImpl<>(List.of(sandton, campsBay, morningside)));
 
         PageResponse<PropertySummary> out = service.search(
-                List.of("sandt", "camps"), null, null, null, 0, 20
+                List.of("sandt", "camps"), null, null, null, null, null, 0, 20
         );
 
         assertThat(out.totalElements()).isEqualTo(2);
@@ -142,13 +142,71 @@ class PropertyServiceTest {
         when(properties.search(any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(p1, p2, p3)));
 
-        PageResponse<PropertySummary> page1 = service.search(null, null, null, null, 0, 2);
+        PageResponse<PropertySummary> page1 = service.search(null, null, null, null, null, null, 0, 2);
         assertThat(page1.content()).hasSize(2);
         assertThat(page1.totalElements()).isEqualTo(3);
         assertThat(page1.totalPages()).isEqualTo(2);
 
-        PageResponse<PropertySummary> page2 = service.search(null, null, null, null, 1, 2);
+        PageResponse<PropertySummary> page2 = service.search(null, null, null, null, null, null, 1, 2);
         assertThat(page2.content()).hasSize(1);
+    }
+
+    // ── sort ──────────────────────────────────────────────────────────
+
+    @Test
+    void search_sorts_by_price_ascending() {
+        Property p1 = propertyWith("High", PropertyStatus.LISTED, "Sandton");
+        attachUnit(p1, new BigDecimal("45000"), 4, 3, UnitStatus.AVAILABLE);
+        Property p2 = propertyWith("Mid", PropertyStatus.LISTED, "Sandton");
+        attachUnit(p2, new BigDecimal("28000"), 3, 2, UnitStatus.AVAILABLE);
+        Property p3 = propertyWith("Low", PropertyStatus.LISTED, "Sandton");
+        attachUnit(p3, new BigDecimal("12000"), 1, 1, UnitStatus.AVAILABLE);
+        when(properties.search(any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(p1, p2, p3)));
+
+        PageResponse<PropertySummary> out = service.search(
+                null, null, null, null,
+                PropertyService.SortKey.PRICE, PropertyService.SortDirection.ASC,
+                0, 20
+        );
+
+        assertThat(out.content()).extracting(PropertySummary::title)
+                .containsExactly("Low", "Mid", "High");
+    }
+
+    @Test
+    void search_sorts_by_bedrooms_descending() {
+        Property a = propertyWith("4 bed", PropertyStatus.LISTED, "Sandton");
+        attachUnit(a, new BigDecimal("45000"), 4, 3, UnitStatus.AVAILABLE);
+        Property b = propertyWith("2 bed", PropertyStatus.LISTED, "Sandton");
+        attachUnit(b, new BigDecimal("28000"), 2, 2, UnitStatus.AVAILABLE);
+        Property c = propertyWith("3 bed", PropertyStatus.LISTED, "Sandton");
+        attachUnit(c, new BigDecimal("32000"), 3, 2, UnitStatus.AVAILABLE);
+        when(properties.search(any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(a, b, c)));
+
+        PageResponse<PropertySummary> out = service.search(
+                null, null, null, null,
+                PropertyService.SortKey.BEDROOMS, PropertyService.SortDirection.DESC,
+                0, 20
+        );
+
+        assertThat(out.content()).extracting(PropertySummary::title)
+                .containsExactly("4 bed", "3 bed", "2 bed");
+    }
+
+    @Test
+    void search_default_sort_is_newest_first() {
+        Property p1 = propertyWith("First", PropertyStatus.LISTED, "Sandton");
+        attachUnit(p1, new BigDecimal("12000"), 1, 1, UnitStatus.AVAILABLE);
+        // Repository returns rows in the order the SQL ORDER BY produced;
+        // the default sort key NEWEST + DESC is a no-op pass-through, so the
+        // service-level sort needs to preserve that incoming order.
+        when(properties.search(any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(p1)));
+
+        PageResponse<PropertySummary> out = service.search(null, null, null, null, null, null, 0, 20);
+        assertThat(out.content()).hasSize(1);
     }
 
     // ── getById ───────────────────────────────────────────────────────
