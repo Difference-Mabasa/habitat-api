@@ -60,7 +60,8 @@ class BaseEntityAuditingTest {
         User saved = users.saveAndFlush(User.builder()
                 .email("audit-" + System.nanoTime() + "@habitat.test")
                 .passwordHash("not-a-real-hash")
-                .displayName("Audit Probe")
+                .firstName("Audit")
+                .surname("Probe")
                 .roles(Set.of(Role.TENANT))
                 .activeRole(Role.TENANT)
                 .build());

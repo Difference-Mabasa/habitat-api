@@ -72,7 +72,7 @@ class AuthFlowIntegrationTest {
     void full_auth_lifecycle_works_end_to_end() throws Exception {
         // 1. Register a new tenant.
         String registerBody = json.writeValueAsString(new RegisterRequest(
-                "lifecycle@example.co.za", "password123", "Lifecycle Tester", Role.TENANT, "Brixton"));
+                "lifecycle@example.co.za", "password123", "Lifecycle", "Tester", Role.TENANT, "Brixton"));
         String registerResponse = mvc.perform(post(ApiRoutes.AUTH_REGISTER)
                         .contentType(MediaType.APPLICATION_JSON).content(registerBody))
                 .andExpect(status().isCreated())

@@ -102,7 +102,8 @@ class UserServiceTest {
         Set<Role> roles = new HashSet<>(Set.of(allRoles));
         User u = User.builder()
                 .email(email)
-                .displayName("X")
+                .firstName("Test")
+                .surname("User")
                 .passwordHash("h")
                 .roles(roles)
                 .activeRole(active)

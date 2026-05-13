@@ -16,7 +16,8 @@ import java.util.UUID;
 public record UserMeResponse(
         UUID id,
         String email,
-        String displayName,
+        String firstName,
+        String surname,
         Set<Role> roles,
         Role activeRole,
         boolean emailVerified,
@@ -27,7 +28,8 @@ public record UserMeResponse(
         return UserMeResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
-                .displayName(user.getDisplayName())
+                .firstName(user.getFirstName())
+                .surname(user.getSurname())
                 .roles(Set.copyOf(user.getRoles()))
                 .activeRole(user.getActiveRole())
                 .emailVerified(user.isEmailVerified())

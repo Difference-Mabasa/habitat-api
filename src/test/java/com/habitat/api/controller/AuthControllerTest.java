@@ -80,7 +80,7 @@ class AuthControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(new RegisterRequest(
-                                "a@example.co.za", "password123", "Sipho", Role.TENANT, null))))
+                                "a@example.co.za", "password123", "Sipho", "Dlamini", Role.TENANT, null))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accessToken").value("access-token"))
                 .andExpect(jsonPath("$.refreshToken").value("refresh-token"))
@@ -93,7 +93,7 @@ class AuthControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                { "email": "not-an-email", "password": "short", "displayName": "", "role": "TENANT" }"""))
+                                { "email": "not-an-email", "password": "short", "firstName": "", "surname": "", "role": "TENANT" }"""))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors").isArray());
@@ -107,7 +107,7 @@ class AuthControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(new RegisterRequest(
-                                "a@example.co.za", "password123", "Sipho", Role.TENANT, null))))
+                                "a@example.co.za", "password123", "Sipho", "Dlamini", Role.TENANT, null))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
     }
@@ -201,7 +201,8 @@ class AuthControllerTest {
                 .refreshTokenExpiresAt(Instant.now().plusSeconds(86400))
                 .userId(USER_ID)
                 .email("a@example.co.za")
-                .displayName("Sipho")
+                .firstName("Sipho")
+                .surname("Dlamini")
                 .roles(Set.of(Role.TENANT))
                 .activeRole(Role.TENANT)
                 .build();

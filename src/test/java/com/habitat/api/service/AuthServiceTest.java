@@ -84,7 +84,7 @@ class AuthServiceTest {
         });
 
         AuthResponse out = authService.register(
-                new RegisterRequest("new@example.co.za", "password123", "Sipho", Role.TENANT, "Brixton"));
+                new RegisterRequest("new@example.co.za", "password123", "Sipho", "Dlamini", Role.TENANT, "Brixton"));
 
         assertThat(out.userId()).isEqualTo(USER_ID);
         assertThat(out.email()).isEqualTo("new@example.co.za");
@@ -104,7 +104,7 @@ class AuthServiceTest {
     void register_rejects_self_assigned_admin_role() {
         // The DTO whitelist nulls the role; the service detects it and throws.
         RegisterRequest req = new RegisterRequest(
-                "a@example.co.za", "password123", "X", Role.ADMIN, null);
+                "a@example.co.za", "password123", "Test", "User", Role.ADMIN, null);
 
         assertThatThrownBy(() -> authService.register(req))
                 .isInstanceOf(ValidationException.class)
@@ -117,7 +117,7 @@ class AuthServiceTest {
         when(userRepository.existsByEmailIgnoreCase("dup@example.co.za")).thenReturn(true);
 
         assertThatThrownBy(() -> authService.register(
-                new RegisterRequest("dup@example.co.za", "password123", "X", Role.TENANT, null)))
+                new RegisterRequest("dup@example.co.za", "password123", "Test", "User", Role.TENANT, null)))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage(ErrorMessages.EMAIL_ALREADY_REGISTERED);
         verify(userRepository, never()).save(any());
@@ -254,7 +254,8 @@ class AuthServiceTest {
         User u = User.builder()
                 .email(email)
                 .passwordHash(hash)
-                .displayName("X")
+                .firstName("Test")
+                .surname("User")
                 .roles(new java.util.HashSet<>(Set.of(role)))
                 .activeRole(role)
                 .emailVerified(true)

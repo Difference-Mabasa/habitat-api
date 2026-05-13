@@ -38,8 +38,11 @@ public class User extends BaseEntity {
     @Column(name = "password_hash")
     private String passwordHash;
 
-    @Column(name = "display_name", nullable = false)
-    private String displayName;
+    @Column(name = "first_name", nullable = false, length = 40)
+    private String firstName;
+
+    @Column(name = "surname", nullable = false, length = 40)
+    private String surname;
 
     /**
      * All roles this user can act as. Driven by ADMIN's ability to grant

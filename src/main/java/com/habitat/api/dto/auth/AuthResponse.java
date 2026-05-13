@@ -15,7 +15,8 @@ public record AuthResponse(
         Instant refreshTokenExpiresAt,
         UUID userId,
         String email,
-        String displayName,
+        String firstName,
+        String surname,
         Set<Role> roles,
         Role activeRole
 ) {}

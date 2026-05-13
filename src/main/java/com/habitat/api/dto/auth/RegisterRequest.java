@@ -19,7 +19,8 @@ import jakarta.validation.constraints.Size;
 public record RegisterRequest(
         @NotBlank @Email String email,
         @NotBlank @Size(min = 8, max = 128) String password,
-        @NotBlank @Size(min = 1, max = 80) String displayName,
+        @NotBlank @Size(min = 1, max = 40) String firstName,
+        @NotBlank @Size(min = 1, max = 40) String surname,
         @NotNull Role role,
         String area
 ) {
@@ -27,13 +28,15 @@ public record RegisterRequest(
     public RegisterRequest(
             @JsonProperty("email") String email,
             @JsonProperty("password") String password,
-            @JsonProperty("displayName") String displayName,
+            @JsonProperty("firstName") String firstName,
+            @JsonProperty("surname") String surname,
             @JsonProperty("role") Role role,
             @JsonProperty("area") String area
     ) {
         this.email = email;
         this.password = password;
-        this.displayName = displayName;
+        this.firstName = firstName;
+        this.surname = surname;
         // Reject privileged role at deserialization time as the first line of defence.
         // The service re-asserts.
         if (role == Role.ADMIN || role == Role.SUPER_ADMIN) {

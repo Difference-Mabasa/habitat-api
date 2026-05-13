@@ -45,7 +45,8 @@ public class AuthService {
         User user = User.builder()
                 .email(req.email().trim().toLowerCase())
                 .passwordHash(passwordEncoder.encode(req.password()))
-                .displayName(req.displayName().trim())
+                .firstName(req.firstName().trim())
+                .surname(req.surname().trim())
                 .roles(Set.of(req.role()))
                 .activeRole(req.role())
                 .emailVerified(false)
@@ -123,7 +124,8 @@ public class AuthService {
                 .refreshTokenExpiresAt(refresh.expiresAt())
                 .userId(user.getId())
                 .email(user.getEmail())
-                .displayName(user.getDisplayName())
+                .firstName(user.getFirstName())
+                .surname(user.getSurname())
                 .roles(user.getRoles())
                 .activeRole(user.getActiveRole())
                 .build();
@@ -134,14 +136,15 @@ public class AuthService {
      * this with {@code @PreAuthorize("hasRole('SUPER_ADMIN')")}; service-layer
      * guard is mirrored for defence-in-depth.
      */
-    public User createWithRoles(String email, String password, String displayName, Set<Role> roles, Role active) {
+    public User createWithRoles(String email, String password, String firstName, String surname, Set<Role> roles, Role active) {
         if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new ConflictException(ErrorMessages.EMAIL_ALREADY_REGISTERED);
         }
         User user = User.builder()
                 .email(email.trim().toLowerCase())
                 .passwordHash(passwordEncoder.encode(password))
-                .displayName(displayName.trim())
+                .firstName(firstName.trim())
+                .surname(surname.trim())
                 .roles(roles)
                 .activeRole(active)
                 .emailVerified(true)
