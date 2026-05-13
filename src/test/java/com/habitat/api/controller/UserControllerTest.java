@@ -62,27 +62,27 @@ class UserControllerTest {
 
     @Test
     void me_returns_the_authenticated_users_profile() throws Exception {
-        when(userService.getMe(USER_ID)).thenReturn(sampleResponse(Role.TENANT));
+        when(userService.getMe(USER_ID)).thenReturn(sampleResponse(Role.USER));
 
         mvc.perform(get(ApiRoutes.USERS_ME).with(authentication(authToken())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(USER_ID.toString()))
                 .andExpect(jsonPath("$.email").value("a@example.co.za"))
-                .andExpect(jsonPath("$.activeRole").value("TENANT"));
+                .andExpect(jsonPath("$.activeRole").value("USER"));
     }
 
     @Test
     void switchActiveRole_returns_updated_user() throws Exception {
-        when(userService.switchActiveRole(eq(USER_ID), eq(Role.LANDLORD)))
-                .thenReturn(sampleResponse(Role.LANDLORD));
+        when(userService.switchActiveRole(eq(USER_ID), eq(Role.AGENT)))
+                .thenReturn(sampleResponse(Role.AGENT));
 
         mvc.perform(patch(ApiRoutes.USERS_ME_ACTIVE_ROLE)
                         .with(authentication(authToken()))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json.writeValueAsString(new SwitchActiveRoleRequest(Role.LANDLORD))))
+                        .content(json.writeValueAsString(new SwitchActiveRoleRequest(Role.AGENT))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.activeRole").value("LANDLORD"));
+                .andExpect(jsonPath("$.activeRole").value("AGENT"));
     }
 
     @Test
@@ -109,7 +109,7 @@ class UserControllerTest {
 
     private static org.springframework.security.core.Authentication authToken() {
         HabitatPrincipal principal = new HabitatPrincipal(
-                USER_ID, "a@example.co.za", Set.of(Role.TENANT), Role.TENANT,
+                USER_ID, "a@example.co.za", Set.of(Role.USER), Role.USER,
                 "jti", Instant.now().plusSeconds(900));
         return new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
                 principal, null, java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_TENANT")));
@@ -121,7 +121,7 @@ class UserControllerTest {
                 .email("a@example.co.za")
                 .firstName("Sipho")
                 .surname("Dlamini")
-                .roles(Set.of(Role.TENANT, Role.LANDLORD))
+                .roles(Set.of(Role.USER, Role.AGENT))
                 .activeRole(activeRole)
                 .emailVerified(true)
                 .area("Brixton")

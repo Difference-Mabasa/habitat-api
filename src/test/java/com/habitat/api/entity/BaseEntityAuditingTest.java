@@ -62,8 +62,8 @@ class BaseEntityAuditingTest {
                 .passwordHash("not-a-real-hash")
                 .firstName("Audit")
                 .surname("Probe")
-                .roles(Set.of(Role.TENANT))
-                .activeRole(Role.TENANT)
+                .roles(Set.of(Role.USER))
+                .activeRole(Role.USER)
                 .build());
 
         OffsetDateTime after = OffsetDateTime.now(ZoneOffset.UTC).plusSeconds(2);

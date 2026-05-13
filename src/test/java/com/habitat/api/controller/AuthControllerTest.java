@@ -80,11 +80,11 @@ class AuthControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(new RegisterRequest(
-                                "a@example.co.za", "password123", "Sipho", "Dlamini", Role.TENANT, null))))
+                                "a@example.co.za", "password123", "Sipho", "Dlamini", Role.USER, null))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accessToken").value("access-token"))
                 .andExpect(jsonPath("$.refreshToken").value("refresh-token"))
-                .andExpect(jsonPath("$.activeRole").value("TENANT"));
+                .andExpect(jsonPath("$.activeRole").value("USER"));
     }
 
     @Test
@@ -93,7 +93,7 @@ class AuthControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                { "email": "not-an-email", "password": "short", "firstName": "", "surname": "", "role": "TENANT" }"""))
+                                { "email": "not-an-email", "password": "short", "firstName": "", "surname": "", "role": "USER" }"""))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors").isArray());
@@ -107,7 +107,7 @@ class AuthControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(new RegisterRequest(
-                                "a@example.co.za", "password123", "Sipho", "Dlamini", Role.TENANT, null))))
+                                "a@example.co.za", "password123", "Sipho", "Dlamini", Role.USER, null))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
     }
@@ -167,7 +167,7 @@ class AuthControllerTest {
     @Test
     void logout_with_principal_returns_204() throws Exception {
         HabitatPrincipal principal = new HabitatPrincipal(
-                USER_ID, "a@example.co.za", Set.of(Role.TENANT), Role.TENANT,
+                USER_ID, "a@example.co.za", Set.of(Role.USER), Role.USER,
                 "jti", Instant.now().plusSeconds(900));
         SecurityContextHolder.getContext().setAuthentication(authFor(principal));
 
@@ -183,7 +183,7 @@ class AuthControllerTest {
     @Test
     void logout_with_no_body_revokes_only_access_token() throws Exception {
         HabitatPrincipal principal = new HabitatPrincipal(
-                USER_ID, "a@example.co.za", Set.of(Role.TENANT), Role.TENANT,
+                USER_ID, "a@example.co.za", Set.of(Role.USER), Role.USER,
                 "jti", Instant.now().plusSeconds(900));
         SecurityContextHolder.getContext().setAuthentication(authFor(principal));
 
@@ -203,8 +203,8 @@ class AuthControllerTest {
                 .email("a@example.co.za")
                 .firstName("Sipho")
                 .surname("Dlamini")
-                .roles(Set.of(Role.TENANT))
-                .activeRole(Role.TENANT)
+                .roles(Set.of(Role.USER))
+                .activeRole(Role.USER)
                 .build();
     }
 }

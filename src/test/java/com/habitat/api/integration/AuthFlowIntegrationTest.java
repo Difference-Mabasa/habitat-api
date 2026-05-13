@@ -72,7 +72,7 @@ class AuthFlowIntegrationTest {
     void full_auth_lifecycle_works_end_to_end() throws Exception {
         // 1. Register a new tenant.
         String registerBody = json.writeValueAsString(new RegisterRequest(
-                "lifecycle@example.co.za", "password123", "Lifecycle", "Tester", Role.TENANT, "Brixton"));
+                "lifecycle@example.co.za", "password123", "Lifecycle", "Tester", Role.USER, "Brixton"));
         String registerResponse = mvc.perform(post(ApiRoutes.AUTH_REGISTER)
                         .contentType(MediaType.APPLICATION_JSON).content(registerBody))
                 .andExpect(status().isCreated())
@@ -81,7 +81,7 @@ class AuthFlowIntegrationTest {
         assertThat(registered.accessToken()).isNotBlank();
         assertThat(registered.refreshToken()).isNotBlank();
         assertThat(registered.email()).isEqualTo("lifecycle@example.co.za");
-        assertThat(registered.activeRole()).isEqualTo(Role.TENANT);
+        assertThat(registered.activeRole()).isEqualTo(Role.USER);
 
         // 2. Hit /me with the access token.
         mvc.perform(get(ApiRoutes.USERS_ME).header("Authorization", "Bearer " + registered.accessToken()))
@@ -131,6 +131,6 @@ class AuthFlowIntegrationTest {
         assertThat(out.email()).isEqualTo("sipho@example.co.za");
         // Every demo user holds all four roles (per development-standards.md §2).
         assertThat(out.roles()).hasSize(4);
-        assertThat(out.activeRole()).isEqualTo(Role.TENANT);
+        assertThat(out.activeRole()).isEqualTo(Role.USER);
     }
 }

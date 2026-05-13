@@ -84,11 +84,11 @@ class AuthServiceTest {
         });
 
         AuthResponse out = authService.register(
-                new RegisterRequest("new@example.co.za", "password123", "Sipho", "Dlamini", Role.TENANT, "Brixton"));
+                new RegisterRequest("new@example.co.za", "password123", "Sipho", "Dlamini", Role.USER, "Brixton"));
 
         assertThat(out.userId()).isEqualTo(USER_ID);
         assertThat(out.email()).isEqualTo("new@example.co.za");
-        assertThat(out.activeRole()).isEqualTo(Role.TENANT);
+        assertThat(out.activeRole()).isEqualTo(Role.USER);
         assertThat(out.accessToken()).isEqualTo("access-token");
         assertThat(out.refreshToken()).isEqualTo("refresh-token");
 
@@ -96,7 +96,7 @@ class AuthServiceTest {
         verify(userRepository).save(captor.capture());
         assertThat(captor.getValue().getEmail()).isEqualTo("new@example.co.za");
         assertThat(captor.getValue().getPasswordHash()).isEqualTo("hashed");
-        assertThat(captor.getValue().getRoles()).containsExactly(Role.TENANT);
+        assertThat(captor.getValue().getRoles()).containsExactly(Role.USER);
         assertThat(captor.getValue().isEmailVerified()).isFalse();
     }
 
@@ -117,7 +117,7 @@ class AuthServiceTest {
         when(userRepository.existsByEmailIgnoreCase("dup@example.co.za")).thenReturn(true);
 
         assertThatThrownBy(() -> authService.register(
-                new RegisterRequest("dup@example.co.za", "password123", "Test", "User", Role.TENANT, null)))
+                new RegisterRequest("dup@example.co.za", "password123", "Test", "User", Role.USER, null)))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage(ErrorMessages.EMAIL_ALREADY_REGISTERED);
         verify(userRepository, never()).save(any());
@@ -127,7 +127,7 @@ class AuthServiceTest {
 
     @Test
     void login_with_correct_password_issues_tokens() {
-        User user = userOf("sipho@example.co.za", "hash", Role.TENANT);
+        User user = userOf("sipho@example.co.za", "hash", Role.USER);
         when(userRepository.findByEmailIgnoreCase("sipho@example.co.za")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("password123", "hash")).thenReturn(true);
 
@@ -146,7 +146,7 @@ class AuthServiceTest {
 
     @Test
     void login_with_wrong_password_throws_unauthorized() {
-        User user = userOf("a@example.co.za", "hash", Role.TENANT);
+        User user = userOf("a@example.co.za", "hash", Role.USER);
         when(userRepository.findByEmailIgnoreCase("a@example.co.za")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
 
@@ -160,10 +160,10 @@ class AuthServiceTest {
     void refresh_revokes_old_jti_and_issues_new_tokens() {
         Instant futureExp = Instant.now().plusSeconds(3600);
         HabitatPrincipal refreshPrincipal = new HabitatPrincipal(
-                USER_ID, "a@example.co.za", Set.of(Role.TENANT), Role.TENANT, "old-refresh-jti", futureExp);
+                USER_ID, "a@example.co.za", Set.of(Role.USER), Role.USER, "old-refresh-jti", futureExp);
         when(jwt.verifyRefresh("the-refresh-token")).thenReturn(refreshPrincipal);
         when(blocklist.isRevoked("old-refresh-jti")).thenReturn(false);
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(userOf("a@example.co.za", "h", Role.TENANT)));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(userOf("a@example.co.za", "h", Role.USER)));
 
         AuthResponse out = authService.refresh("the-refresh-token");
 
@@ -176,7 +176,7 @@ class AuthServiceTest {
     void refresh_throws_when_jti_already_blocklisted() {
         Instant exp = Instant.now().plusSeconds(60);
         HabitatPrincipal p = new HabitatPrincipal(
-                USER_ID, "a@example.co.za", Set.of(Role.TENANT), Role.TENANT, "revoked-jti", exp);
+                USER_ID, "a@example.co.za", Set.of(Role.USER), Role.USER, "revoked-jti", exp);
         when(jwt.verifyRefresh("token")).thenReturn(p);
         when(blocklist.isRevoked("revoked-jti")).thenReturn(true);
 
@@ -190,7 +190,7 @@ class AuthServiceTest {
     void refresh_throws_when_user_no_longer_exists() {
         Instant exp = Instant.now().plusSeconds(60);
         HabitatPrincipal p = new HabitatPrincipal(
-                USER_ID, "ghost@example.co.za", Set.of(Role.TENANT), Role.TENANT, "jti", exp);
+                USER_ID, "ghost@example.co.za", Set.of(Role.USER), Role.USER, "jti", exp);
         when(jwt.verifyRefresh(any())).thenReturn(p);
         when(blocklist.isRevoked(any())).thenReturn(false);
         when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
@@ -206,9 +206,9 @@ class AuthServiceTest {
         Instant accessExp = Instant.now().plusSeconds(900);
         Instant refreshExp = Instant.now().plusSeconds(86400);
         HabitatPrincipal accessP = new HabitatPrincipal(
-                USER_ID, "a@example.co.za", Set.of(Role.TENANT), Role.TENANT, "access-jti", accessExp);
+                USER_ID, "a@example.co.za", Set.of(Role.USER), Role.USER, "access-jti", accessExp);
         HabitatPrincipal refreshP = new HabitatPrincipal(
-                USER_ID, "a@example.co.za", Set.of(Role.TENANT), Role.TENANT, "refresh-jti", refreshExp);
+                USER_ID, "a@example.co.za", Set.of(Role.USER), Role.USER, "refresh-jti", refreshExp);
         when(jwt.verifyRefresh("refresh-token")).thenReturn(refreshP);
 
         authService.logout(accessP, "refresh-token");
@@ -221,7 +221,7 @@ class AuthServiceTest {
     void logout_with_no_refresh_token_only_revokes_access() {
         Instant accessExp = Instant.now().plusSeconds(900);
         HabitatPrincipal accessP = new HabitatPrincipal(
-                USER_ID, "a@example.co.za", Set.of(Role.TENANT), Role.TENANT, "access-jti", accessExp);
+                USER_ID, "a@example.co.za", Set.of(Role.USER), Role.USER, "access-jti", accessExp);
 
         authService.logout(accessP, null);
 
@@ -233,7 +233,7 @@ class AuthServiceTest {
     void logout_swallows_invalid_refresh_token() {
         Instant accessExp = Instant.now().plusSeconds(900);
         HabitatPrincipal accessP = new HabitatPrincipal(
-                USER_ID, "a@example.co.za", Set.of(Role.TENANT), Role.TENANT, "access-jti", accessExp);
+                USER_ID, "a@example.co.za", Set.of(Role.USER), Role.USER, "access-jti", accessExp);
         when(jwt.verifyRefresh("garbage")).thenThrow(new UnauthorizedException("nope"));
 
         // Should not throw — partial logout is OK.
