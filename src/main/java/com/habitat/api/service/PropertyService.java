@@ -57,27 +57,73 @@ public class PropertyService {
 
     @Transactional(readOnly = true)
     public PageResponse<PropertySummary> search(
-            String location,
+            List<String> locations,
             List<UnitType> unitTypes,
             BigDecimal maxPrice,
             Integer minBeds,
             int page,
             int size
     ) {
-        Pageable req = PageRequest.of(page, size);
+        // Multi-location filtering is done in Java after SQL fetches the
+        // already-narrowed set by type/price/beds. JPQL doesn't compose OR
+        // clauses over a variable-length list cleanly without either native
+        // SQL (loses pagination support without a count query) or the
+        // Specification API (heavier for the v1 catalogue). Sub-100 properties
+        // makes in-memory filtering trivial; revisit if the catalogue grows.
         List<UnitType> typesParam = (unitTypes == null || unitTypes.isEmpty()) ? null : unitTypes;
-        // Empty string = "no location filter" (see PropertyRepository.search
-        // — null trips Postgres' bind-type inference).
-        String locationParam = blankToNull(location) == null ? "" : location.trim();
-        Page<Property> rows = properties.search(
+        List<String> cleanLocations = locations == null
+                ? List.of()
+                : locations.stream()
+                        .map(PropertyService::blankToNull)
+                        .filter(s -> s != null)
+                        .toList();
+
+        Pageable big = PageRequest.of(0, MAX_FETCH);
+        Page<Property> raw = properties.search(
                 PropertyStatus.LISTED,
-                locationParam,
+                "",
                 typesParam,
                 maxPrice,
                 minBeds,
-                req
+                big
         );
-        return PageResponse.from(rows.map(PropertySummary::from));
+
+        List<Property> filtered = cleanLocations.isEmpty()
+                ? raw.getContent()
+                : raw.getContent().stream()
+                        .filter(p -> matchesAnyLocation(p, cleanLocations))
+                        .toList();
+
+        int total = filtered.size();
+        int from = Math.min(page * size, total);
+        int to = Math.min(from + size, total);
+        List<PropertySummary> content = filtered.subList(from, to).stream()
+                .map(PropertySummary::from)
+                .toList();
+        int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / size);
+
+        return PageResponse.<PropertySummary>builder()
+                .content(content)
+                .page(page)
+                .size(size)
+                .totalElements(total)
+                .totalPages(totalPages)
+                .build();
+    }
+
+    private static final int MAX_FETCH = 200;
+
+    private static boolean matchesAnyLocation(Property p, List<String> locations) {
+        return locations.stream().anyMatch(loc -> {
+            String needle = loc.toLowerCase();
+            return contains(p.getSuburb(), needle)
+                    || contains(p.getCity(), needle)
+                    || contains(p.getProvince(), needle);
+        });
+    }
+
+    private static boolean contains(String haystack, String needleLower) {
+        return haystack != null && haystack.toLowerCase().contains(needleLower);
     }
 
     @Transactional(readOnly = true)

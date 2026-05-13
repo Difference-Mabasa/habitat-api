@@ -37,7 +37,10 @@ public class PropertyController {
 
     @GetMapping
     public PageResponse<PropertySummary> search(
-            @RequestParam(required = false) String location,
+            // Multi-select on the browse filter — Spring auto-splits a CSV
+            // value so ?location=Sandton,Camps%20Bay binds as a 2-element list.
+            // Each value is OR-matched against suburb/city/province.
+            @RequestParam(required = false) List<String> location,
             @RequestParam(name = "type", required = false) List<UnitType> unitTypes,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) Integer minBeds,

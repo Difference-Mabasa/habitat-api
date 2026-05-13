@@ -85,7 +85,7 @@ class PropertyControllerTest {
                         .content(List.of()).page(0).size(10).totalElements(0L).totalPages(0).build());
 
         mvc.perform(get(ApiRoutes.PROPERTIES)
-                        .param("location", "Sandton")
+                        .param("location", "Sandton,Camps Bay")
                         .param("type", "APARTMENT,STUDIO")
                         .param("maxPrice", "20000")
                         .param("minBeds", "2")
@@ -94,7 +94,7 @@ class PropertyControllerTest {
                 .andExpect(status().isOk());
 
         verify(properties).search(
-                eq("Sandton"),
+                eq(List.of("Sandton", "Camps Bay")),
                 eq(List.of(UnitType.APARTMENT, UnitType.STUDIO)),
                 eq(new BigDecimal("20000")),
                 eq(2),

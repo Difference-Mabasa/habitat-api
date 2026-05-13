@@ -68,7 +68,7 @@ class PropertyServiceTest {
 
     @Test
     void search_returns_mapped_page_of_summaries() {
-        Property p = propertyWith("Sandton Villa", PropertyStatus.LISTED);
+        Property p = propertyWith("Sandton Villa", PropertyStatus.LISTED, "Sandton");
         attachUnit(p, new BigDecimal("45000"), 4, 3, UnitStatus.AVAILABLE);
         Page<Property> page = new PageImpl<>(List.of(p), PageRequest.of(0, 20), 1);
         when(properties.search(eq(PropertyStatus.LISTED), eq(""), isNull(), isNull(), isNull(), any(Pageable.class)))
@@ -83,16 +83,6 @@ class PropertyServiceTest {
     }
 
     @Test
-    void search_passes_blank_location_as_empty_string() {
-        when(properties.search(any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of()));
-
-        service.search("   ", null, null, null, 0, 20);
-
-        verify(properties).search(eq(PropertyStatus.LISTED), eq(""), isNull(), isNull(), isNull(), any(Pageable.class));
-    }
-
-    @Test
     void search_passes_empty_unit_types_as_null() {
         when(properties.search(any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
@@ -103,21 +93,62 @@ class PropertyServiceTest {
     }
 
     @Test
-    void search_forwards_populated_filters() {
+    void search_forwards_unit_filters_to_sql_and_skips_location() {
         when(properties.search(any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
-        service.search("Sandton", List.of(UnitType.APARTMENT, UnitType.STUDIO),
+        service.search(List.of("Sandton"), List.of(UnitType.APARTMENT, UnitType.STUDIO),
                 new BigDecimal("20000"), 2, 1, 10);
 
+        // Locations are matched in Java — SQL always sees empty location.
         verify(properties).search(
                 eq(PropertyStatus.LISTED),
-                eq("Sandton"),
+                eq(""),
                 eq(List.of(UnitType.APARTMENT, UnitType.STUDIO)),
                 eq(new BigDecimal("20000")),
                 eq(2),
                 any(Pageable.class)
         );
+    }
+
+    @Test
+    void search_filters_by_any_location_match_case_insensitive() {
+        Property sandton = propertyWith("Sandton House", PropertyStatus.LISTED, "Sandton");
+        attachUnit(sandton, new BigDecimal("45000"), 4, 3, UnitStatus.AVAILABLE);
+        Property campsBay = propertyWith("Camps Bay Villa", PropertyStatus.LISTED, "Camps Bay");
+        attachUnit(campsBay, new BigDecimal("65000"), 4, 4, UnitStatus.AVAILABLE);
+        Property morningside = propertyWith("Morningside Townhouse", PropertyStatus.LISTED, "Morningside");
+        attachUnit(morningside, new BigDecimal("28000"), 3, 2, UnitStatus.AVAILABLE);
+        when(properties.search(any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(sandton, campsBay, morningside)));
+
+        PageResponse<PropertySummary> out = service.search(
+                List.of("sandt", "camps"), null, null, null, 0, 20
+        );
+
+        assertThat(out.totalElements()).isEqualTo(2);
+        assertThat(out.content()).extracting(PropertySummary::title)
+                .containsExactlyInAnyOrder("Sandton House", "Camps Bay Villa");
+    }
+
+    @Test
+    void search_paginates_filtered_results() {
+        Property p1 = propertyWith("Sandton 1", PropertyStatus.LISTED, "Sandton");
+        attachUnit(p1, new BigDecimal("45000"), 4, 3, UnitStatus.AVAILABLE);
+        Property p2 = propertyWith("Sandton 2", PropertyStatus.LISTED, "Sandton");
+        attachUnit(p2, new BigDecimal("38000"), 3, 2, UnitStatus.AVAILABLE);
+        Property p3 = propertyWith("Sandton 3", PropertyStatus.LISTED, "Sandton");
+        attachUnit(p3, new BigDecimal("28000"), 2, 2, UnitStatus.AVAILABLE);
+        when(properties.search(any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(p1, p2, p3)));
+
+        PageResponse<PropertySummary> page1 = service.search(null, null, null, null, 0, 2);
+        assertThat(page1.content()).hasSize(2);
+        assertThat(page1.totalElements()).isEqualTo(3);
+        assertThat(page1.totalPages()).isEqualTo(2);
+
+        PageResponse<PropertySummary> page2 = service.search(null, null, null, null, 1, 2);
+        assertThat(page2.content()).hasSize(1);
     }
 
     // ── getById ───────────────────────────────────────────────────────
@@ -356,6 +387,10 @@ class PropertyServiceTest {
     // ── Helpers ───────────────────────────────────────────────────────
 
     private Property propertyWith(String title, PropertyStatus status) {
+        return propertyWith(title, status, null);
+    }
+
+    private Property propertyWith(String title, PropertyStatus status, String suburb) {
         User owner = userWithId(OWNER_ID);
         Property p = Property.builder()
                 .landlord(owner)
@@ -363,6 +398,7 @@ class PropertyServiceTest {
                 .title(title)
                 .propertyType(PropertyType.HOUSE)
                 .status(status)
+                .suburb(suburb)
                 .build();
         setId(p, PROP_ID);
         return p;
