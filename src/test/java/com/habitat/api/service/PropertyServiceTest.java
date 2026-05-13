@@ -71,10 +71,10 @@ class PropertyServiceTest {
         Property p = propertyWith("Sandton Villa", PropertyStatus.LISTED, "Sandton");
         attachUnit(p, new BigDecimal("45000"), 4, 3, UnitStatus.AVAILABLE);
         Page<Property> page = new PageImpl<>(List.of(p), PageRequest.of(0, 20), 1);
-        when(properties.search(eq(PropertyStatus.LISTED), eq(""), isNull(), isNull(), isNull(), any(Pageable.class)))
+        when(properties.search(eq(PropertyStatus.LISTED), eq(""), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(page);
 
-        PageResponse<PropertySummary> out = service.search(null, null, null, null, null, null, 0, 20);
+        PageResponse<PropertySummary> out = service.search(null, null, null, null, null, null, null, null, 0, 20);
 
         assertThat(out.totalElements()).isEqualTo(1);
         assertThat(out.content()).hasSize(1);
@@ -84,29 +84,31 @@ class PropertyServiceTest {
 
     @Test
     void search_passes_empty_unit_types_as_null() {
-        when(properties.search(any(), any(), any(), any(), any(), any()))
+        when(properties.search(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
-        service.search(null, List.of(), null, null, null, null, 0, 20);
+        service.search(null, List.of(), null, null, null, null, null, null, 0, 20);
 
-        verify(properties).search(eq(PropertyStatus.LISTED), eq(""), isNull(), isNull(), isNull(), any(Pageable.class));
+        verify(properties).search(eq(PropertyStatus.LISTED), eq(""), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
     }
 
     @Test
     void search_forwards_unit_filters_to_sql_and_skips_location() {
-        when(properties.search(any(), any(), any(), any(), any(), any()))
+        when(properties.search(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
         service.search(List.of("Sandton"), List.of(UnitType.APARTMENT, UnitType.STUDIO),
-                new BigDecimal("20000"), 2, null, null, 1, 10);
+                new BigDecimal("5000"), new BigDecimal("20000"), 2, 60, null, null, 1, 10);
 
         // Locations are matched in Java — SQL always sees empty location.
         verify(properties).search(
                 eq(PropertyStatus.LISTED),
                 eq(""),
                 eq(List.of(UnitType.APARTMENT, UnitType.STUDIO)),
+                eq(new BigDecimal("5000")),
                 eq(new BigDecimal("20000")),
                 eq(2),
+                eq(60),
                 any(Pageable.class)
         );
     }
@@ -119,11 +121,11 @@ class PropertyServiceTest {
         attachUnit(campsBay, new BigDecimal("65000"), 4, 4, UnitStatus.AVAILABLE);
         Property morningside = propertyWith("Morningside Townhouse", PropertyStatus.LISTED, "Morningside");
         attachUnit(morningside, new BigDecimal("28000"), 3, 2, UnitStatus.AVAILABLE);
-        when(properties.search(any(), any(), any(), any(), any(), any()))
+        when(properties.search(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(sandton, campsBay, morningside)));
 
         PageResponse<PropertySummary> out = service.search(
-                List.of("sandt", "camps"), null, null, null, null, null, 0, 20
+                List.of("sandt", "camps"), null, null, null, null, null, null, null, 0, 20
         );
 
         assertThat(out.totalElements()).isEqualTo(2);
@@ -139,15 +141,15 @@ class PropertyServiceTest {
         attachUnit(p2, new BigDecimal("38000"), 3, 2, UnitStatus.AVAILABLE);
         Property p3 = propertyWith("Sandton 3", PropertyStatus.LISTED, "Sandton");
         attachUnit(p3, new BigDecimal("28000"), 2, 2, UnitStatus.AVAILABLE);
-        when(properties.search(any(), any(), any(), any(), any(), any()))
+        when(properties.search(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(p1, p2, p3)));
 
-        PageResponse<PropertySummary> page1 = service.search(null, null, null, null, null, null, 0, 2);
+        PageResponse<PropertySummary> page1 = service.search(null, null, null, null, null, null, null, null, 0, 2);
         assertThat(page1.content()).hasSize(2);
         assertThat(page1.totalElements()).isEqualTo(3);
         assertThat(page1.totalPages()).isEqualTo(2);
 
-        PageResponse<PropertySummary> page2 = service.search(null, null, null, null, null, null, 1, 2);
+        PageResponse<PropertySummary> page2 = service.search(null, null, null, null, null, null, null, null, 1, 2);
         assertThat(page2.content()).hasSize(1);
     }
 
@@ -161,11 +163,11 @@ class PropertyServiceTest {
         attachUnit(p2, new BigDecimal("28000"), 3, 2, UnitStatus.AVAILABLE);
         Property p3 = propertyWith("Low", PropertyStatus.LISTED, "Sandton");
         attachUnit(p3, new BigDecimal("12000"), 1, 1, UnitStatus.AVAILABLE);
-        when(properties.search(any(), any(), any(), any(), any(), any()))
+        when(properties.search(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(p1, p2, p3)));
 
         PageResponse<PropertySummary> out = service.search(
-                null, null, null, null,
+                null, null, null, null, null, null,
                 PropertyService.SortKey.PRICE, PropertyService.SortDirection.ASC,
                 0, 20
         );
@@ -182,11 +184,11 @@ class PropertyServiceTest {
         attachUnit(b, new BigDecimal("28000"), 2, 2, UnitStatus.AVAILABLE);
         Property c = propertyWith("3 bed", PropertyStatus.LISTED, "Sandton");
         attachUnit(c, new BigDecimal("32000"), 3, 2, UnitStatus.AVAILABLE);
-        when(properties.search(any(), any(), any(), any(), any(), any()))
+        when(properties.search(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(a, b, c)));
 
         PageResponse<PropertySummary> out = service.search(
-                null, null, null, null,
+                null, null, null, null, null, null,
                 PropertyService.SortKey.BEDROOMS, PropertyService.SortDirection.DESC,
                 0, 20
         );
@@ -202,10 +204,10 @@ class PropertyServiceTest {
         // Repository returns rows in the order the SQL ORDER BY produced;
         // the default sort key NEWEST + DESC is a no-op pass-through, so the
         // service-level sort needs to preserve that incoming order.
-        when(properties.search(any(), any(), any(), any(), any(), any()))
+        when(properties.search(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(p1)));
 
-        PageResponse<PropertySummary> out = service.search(null, null, null, null, null, null, 0, 20);
+        PageResponse<PropertySummary> out = service.search(null, null, null, null, null, null, null, null, 0, 20);
         assertThat(out.content()).hasSize(1);
     }
 

@@ -42,14 +42,16 @@ public class PropertyController {
             // Each value is OR-matched against suburb/city/province.
             @RequestParam(required = false) List<String> location,
             @RequestParam(name = "type", required = false) List<UnitType> unitTypes,
+            @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) Integer minBeds,
+            @RequestParam(required = false) Integer minSqm,
             @RequestParam(required = false) PropertyService.SortKey sort,
             @RequestParam(required = false) PropertyService.SortDirection dir,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return properties.search(location, unitTypes, maxPrice, minBeds, sort, dir, page, size);
+        return properties.search(location, unitTypes, minPrice, maxPrice, minBeds, minSqm, sort, dir, page, size);
     }
 
     @GetMapping("/{id}")

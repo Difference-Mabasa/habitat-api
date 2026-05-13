@@ -68,8 +68,10 @@ public class PropertyService {
     public PageResponse<PropertySummary> search(
             List<String> locations,
             List<UnitType> unitTypes,
+            BigDecimal minPrice,
             BigDecimal maxPrice,
             Integer minBeds,
+            Integer minSqm,
             SortKey sortKey,
             SortDirection sortDirection,
             int page,
@@ -94,8 +96,10 @@ public class PropertyService {
                 PropertyStatus.LISTED,
                 "",
                 typesParam,
+                minPrice,
                 maxPrice,
                 minBeds,
+                minSqm,
                 big
         );
 

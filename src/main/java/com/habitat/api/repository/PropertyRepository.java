@@ -38,8 +38,10 @@ public interface PropertyRepository extends JpaRepository<Property, UUID> {
                     WHERE u.property = p
                       AND u.status = com.habitat.api.enums.UnitStatus.AVAILABLE
                       AND (:unitTypes IS NULL OR u.unitType IN :unitTypes)
+                      AND (:minPrice IS NULL OR u.price >= :minPrice)
                       AND (:maxPrice IS NULL OR u.price <= :maxPrice)
                       AND (:minBeds IS NULL OR u.bedrooms >= :minBeds)
+                      AND (:minSqm IS NULL OR u.sqm >= :minSqm)
               )
             ORDER BY p.createdAt DESC
             """)
@@ -49,8 +51,10 @@ public interface PropertyRepository extends JpaRepository<Property, UUID> {
                Postgres' bind-parameter type inference (lower(bytea) error). */
             @Param("location") String location,
             @Param("unitTypes") List<UnitType> unitTypes,
+            @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("minBeds") Integer minBeds,
+            @Param("minSqm") Integer minSqm,
             Pageable pageable
     );
 

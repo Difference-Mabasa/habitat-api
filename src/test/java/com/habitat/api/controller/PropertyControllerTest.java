@@ -69,7 +69,7 @@ class PropertyControllerTest {
         );
         PageResponse<PropertySummary> page = PageResponse.<PropertySummary>builder()
                 .content(List.of(summary)).page(0).size(20).totalElements(1L).totalPages(1).build();
-        when(properties.search(any(), any(), any(), any(), any(), any(), eq(0), eq(20))).thenReturn(page);
+        when(properties.search(any(), any(), any(), any(), any(), any(), any(), any(), eq(0), eq(20))).thenReturn(page);
 
         mvc.perform(get(ApiRoutes.PROPERTIES))
                 .andExpect(status().isOk())
@@ -80,15 +80,17 @@ class PropertyControllerTest {
 
     @Test
     void search_forwards_query_params() throws Exception {
-        when(properties.search(any(), any(), any(), any(), any(), any(), any(Integer.class), any(Integer.class)))
+        when(properties.search(any(), any(), any(), any(), any(), any(), any(), any(), any(Integer.class), any(Integer.class)))
                 .thenReturn(PageResponse.<PropertySummary>builder()
                         .content(List.of()).page(0).size(10).totalElements(0L).totalPages(0).build());
 
         mvc.perform(get(ApiRoutes.PROPERTIES)
                         .param("location", "Sandton,Camps Bay")
                         .param("type", "APARTMENT,STUDIO")
+                        .param("minPrice", "5000")
                         .param("maxPrice", "20000")
                         .param("minBeds", "2")
+                        .param("minSqm", "60")
                         .param("sort", "PRICE")
                         .param("dir", "ASC")
                         .param("page", "0")
@@ -98,8 +100,10 @@ class PropertyControllerTest {
         verify(properties).search(
                 eq(List.of("Sandton", "Camps Bay")),
                 eq(List.of(UnitType.APARTMENT, UnitType.STUDIO)),
+                eq(new BigDecimal("5000")),
                 eq(new BigDecimal("20000")),
                 eq(2),
+                eq(60),
                 eq(PropertyService.SortKey.PRICE),
                 eq(PropertyService.SortDirection.ASC),
                 eq(0),
