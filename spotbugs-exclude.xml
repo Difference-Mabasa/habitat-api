@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter
+        xmlns="https://github.com/spotbugs/filter/3.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0 https://raw.githubusercontent.com/spotbugs/spotbugs/master/spotbugs/etc/findbugsfilter.xsd">
+
+    <!--
+        EI_EXPOSE_REP / EI_EXPOSE_REP2: Lombok-generated getters and @Builder
+        constructors on DTOs, JPA entities, and security value objects pass
+        mutable refs (List, OffsetDateTime, byte[]) without defensive copies.
+        Acceptable here: these objects are constructed once and travel through
+        Jackson serialization or Spring DI, not mutated post-construction.
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+        <Or>
+            <Package name="~com\.habitat\.api\.dto.*"/>
+            <Package name="com.habitat.api.entity"/>
+            <Package name="com.habitat.api.security"/>
+            <Class name="com.habitat.api.service.TokenBlocklistService"/>
+        </Or>
+    </Match>
+
+    <!--
+        CT_CONSTRUCTOR_THROW: JwtService validates its injected secret/TTL
+        config at construction time and fails fast on misconfiguration. The
+        finalizer-attack vector requires a non-final class with a finalizer;
+        JwtService is a final-by-convention Spring @Service without one.
+    -->
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="com.habitat.api.security.JwtService"/>
+    </Match>
+
+</FindBugsFilter>
