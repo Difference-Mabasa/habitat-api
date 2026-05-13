@@ -37,23 +37,30 @@ REST API for **Habitat** — South Africa's verified rental platform. Mirrors th
 
 ## Quick start
 
-### 1. Bring up infra
+There are two ways to run the API locally:
+
+- **Full-stack Docker** (recommended for manual UI testing) — Postgres + Redis + API + UI all in containers, orchestrated from `~/IdeaProjects/habitat-stack/`. See [`../habitat-stack/README.md`](../habitat-stack/README.md) for the day-to-day command list. Don't run both this path and the IDE path below at the same time — they share container names and ports.
+- **IDE + infra-only Docker** (recommended when you're iterating on Java) — Postgres + Redis in containers via this repo's `docker-compose.yml`, with the API running directly from your IDE so hot-reload + the debugger work.
+
+### Path A — IDE + infra-only Docker
 
 ```bash
-docker compose up -d
+docker compose up -d              # Postgres on :5432, Redis on :6379
+mvn spring-boot:run               # or run HabitatApiApplication from IntelliJ
 ```
 
-Starts PostgreSQL on `localhost:5432` (db `habitat_db`, user `habitat`) and Redis on `localhost:6379`.
+Flyway applies every migration under `src/main/resources/db/migration/` at startup.
 
-### 2. Run the API
+### Path B — Full-stack Docker
 
 ```bash
-mvn spring-boot:run
+cd ../habitat-stack
+docker compose up -d --build      # builds the api + ui images, brings up everything
 ```
 
-Or run `HabitatApiApplication` from IntelliJ. Flyway applies every migration under `src/main/resources/db/migration/` at startup.
+UI at http://localhost:5173, API at http://localhost:8080 (or via the proxy at http://localhost:5173/api/v1/...).
 
-### 3. Smoke test
+### Smoke test
 
 ```bash
 curl -s http://localhost:8080/api/v1/health | jq
@@ -65,7 +72,7 @@ curl -s -X POST http://localhost:8080/api/v1/auth/register \
 
 You should see an `AuthResponse` with `accessToken`, `refreshToken`, and the user's profile.
 
-### 4. Stop infra
+### Stop
 
 ```bash
 docker compose down       # keeps data

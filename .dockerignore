@@ -1,0 +1,32 @@
+# Build outputs
+target
+*.class
+
+# IDE / VCS
+.git
+.gitignore
+.github
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# Docker artifacts
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
+
+# Logs / env
+*.log
+.env
+.env.*
+
+# Local-only docs the build doesn't need
+README.md
+PRODUCT_BUILD_ORDER.md
+build-order.md
+development-standards.md
+
+# Test scratch
+scripts
