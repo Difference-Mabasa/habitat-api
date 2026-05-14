@@ -12,6 +12,7 @@ import com.habitat.api.entity.User;
 import com.habitat.api.enums.ApplicationStatus;
 import com.habitat.api.enums.LeaseStatus;
 import com.habitat.api.enums.LeaseTemplate;
+import com.habitat.api.event.LeaseSignedEvent;
 import com.habitat.api.exception.ConflictException;
 import com.habitat.api.exception.ForbiddenException;
 import com.habitat.api.exception.ResourceNotFoundException;
@@ -19,6 +20,7 @@ import com.habitat.api.repository.LeaseRepository;
 import com.habitat.api.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +46,7 @@ import java.util.UUID;
 public class LeaseService {
 
     private final LeaseRepository leases;
+    private final ApplicationEventPublisher events;
     private final SecurityUtils security;
 
     /**
@@ -159,6 +162,11 @@ public class LeaseService {
         if (lease.getTenantSignedAt() != null && lease.getLandlordSignedAt() != null) {
             lease.setStatus(LeaseStatus.SIGNED);
             log.info("lease {} fully signed", lease.getLeaseRef());
+            // AFTER_COMMIT listener handles the move-in side effects:
+            // application → COMPLETED, unit → OCCUPIED, party notifications.
+            // Decouples slice-4 concerns from this service per
+            // habitat-api/TECH_DEBT.md ARCH-03.
+            events.publishEvent(new LeaseSignedEvent(lease.getId()));
         }
 
         return LeaseResponse.from(lease);

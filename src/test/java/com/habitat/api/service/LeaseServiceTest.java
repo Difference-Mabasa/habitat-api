@@ -2,6 +2,7 @@ package com.habitat.api.service;
 
 import com.habitat.api.dto.lease.DeclineLeaseRequest;
 import com.habitat.api.dto.lease.SignLeaseRequest;
+import com.habitat.api.event.LeaseSignedEvent;
 import com.habitat.api.entity.Application;
 import com.habitat.api.entity.Lease;
 import com.habitat.api.entity.Property;
@@ -16,6 +17,7 @@ import com.habitat.api.exception.ForbiddenException;
 import com.habitat.api.exception.ResourceNotFoundException;
 import com.habitat.api.repository.LeaseRepository;
 import com.habitat.api.security.SecurityUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -40,6 +42,7 @@ import static org.mockito.Mockito.when;
 class LeaseServiceTest {
 
     @Mock LeaseRepository leases;
+    @Mock ApplicationEventPublisher events;
     @Mock SecurityUtils security;
     @InjectMocks LeaseService service;
 
@@ -173,6 +176,20 @@ class LeaseServiceTest {
         service.sign(l.getId(), new SignLeaseRequest("123456"));
 
         assertThat(l.getStatus()).isEqualTo(LeaseStatus.SIGNED);
+        verify(events).publishEvent(new LeaseSignedEvent(l.getId()));
+    }
+
+    @Test
+    void sign_does_NOT_publish_event_on_first_signature() {
+        Application app = applicationWith(ApplicationStatus.LEASE_PENDING_SIGNATURES, new BigDecimal("9000"));
+        Lease l = leaseWith(LeaseStatus.PENDING_SIGNATURES, app);
+        when(security.requireUserId()).thenReturn(TENANT_ID);
+        when(leases.findById(l.getId())).thenReturn(Optional.of(l));
+
+        service.sign(l.getId(), new SignLeaseRequest("123456"));
+
+        assertThat(l.getStatus()).isEqualTo(LeaseStatus.PENDING_SIGNATURES);
+        verify(events, never()).publishEvent(any(LeaseSignedEvent.class));
     }
 
     @Test

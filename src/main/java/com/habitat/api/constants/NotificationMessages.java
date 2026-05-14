@@ -25,5 +25,21 @@ public final class NotificationMessages {
 
     public static final String WELCOME_ACTION_LABEL = "Complete Profile";
 
+    // ── MOVE-IN (both lease signatures landed) ─────────────────────────
+    public static final String MOVE_IN_TENANT_TITLE =
+            "Welcome to your new home!";
+    public static final String MOVE_IN_TENANT_BODY =
+            "The lease for {propertyTitle} is signed by both parties. "
+                    + "Your move-in date is {startDate} — view the next steps "
+                    + "on the move-in checklist.";
+    public static final String MOVE_IN_TENANT_ACTION_LABEL = "View move-in";
+
+    public static final String LEASE_SIGNED_LANDLORD_TITLE =
+            "Lease signed by both parties";
+    public static final String LEASE_SIGNED_LANDLORD_BODY =
+            "{tenantName} has signed the lease for {propertyTitle}. "
+                    + "Move-in is confirmed for {startDate}.";
+    public static final String LEASE_SIGNED_LANDLORD_ACTION_LABEL = "View lease";
+
     private NotificationMessages() {}
 }

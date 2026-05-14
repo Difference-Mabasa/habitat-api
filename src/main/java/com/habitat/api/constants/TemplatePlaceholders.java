@@ -19,6 +19,9 @@ public final class TemplatePlaceholders {
 
     public static final String P_FIRST_NAME = "firstName";
     public static final String P_SURNAME = "surname";
+    public static final String P_TENANT_NAME = "tenantName";
+    public static final String P_PROPERTY_TITLE = "propertyTitle";
+    public static final String P_START_DATE = "startDate";
 
     private TemplatePlaceholders() {}
 }

@@ -23,6 +23,23 @@ public enum NotificationType {
      * ONBOARDING × EMAIL off in their preferences.
      */
     WELCOME(NotificationCategory.ONBOARDING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Tenant-side confirmation when both lease signatures land. Pushed
+     * from {@code LeaseSignedListener} via the {@link
+     * com.habitat.api.event.LeaseSignedEvent} AFTER_COMMIT hook. Routed
+     * under MESSAGING because it's an application-response style event —
+     * the tenant is hearing back about the application they submitted.
+     */
+    MOVE_IN_CONFIRMED_TENANT(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Landlord-side mirror: the lease has been signed by both parties
+     * and move-in is locked in.
+     */
+    LEASE_SIGNED_LANDLORD(NotificationCategory.MESSAGING,
             EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL));
 
     private final NotificationCategory category;
