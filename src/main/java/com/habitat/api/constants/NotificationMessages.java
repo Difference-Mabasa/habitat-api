@@ -41,5 +41,22 @@ public final class NotificationMessages {
                     + "Move-in is confirmed for {startDate}.";
     public static final String LEASE_SIGNED_LANDLORD_ACTION_LABEL = "View lease";
 
+    // ── APPLICATION SUBMITTED ───────────────────────────────────────────
+    public static final String APPLICATION_RECEIVED_TITLE =
+            "New application received";
+    public static final String APPLICATION_RECEIVED_BODY =
+            "{tenantName} applied for {unitTitle} at {propertyTitle}. "
+                    + "Review the application to take action.";
+    public static final String APPLICATION_RECEIVED_ACTION_LABEL = "Review application";
+
+    public static final String APPLICATION_SUBMITTED_TENANT_TITLE =
+            "Application sent";
+    public static final String APPLICATION_SUBMITTED_TENANT_BODY =
+            "Your application for {unitTitle} is with {landlordName}. "
+                    + "Landlords typically respond within 48 hours — you'll see "
+                    + "status updates on My applications.";
+    public static final String APPLICATION_SUBMITTED_TENANT_ACTION_LABEL =
+            "Track applications";
+
     private NotificationMessages() {}
 }

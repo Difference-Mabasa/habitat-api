@@ -91,6 +91,12 @@ public class ApplicationService {
         Application saved = applications.save(application);
         log.info("application {} submitted by tenant {} for unit {} (status={})",
                 saved.getId(), tenant.getId(), unit.getId(), initialStatus);
+
+        // AFTER_COMMIT listener fans out notifications to tenant + manager
+        // + landlord (if distinct). Keeps ApplicationService decoupled
+        // from NotificationService (TECH_DEBT ARCH-03).
+        events.publishEvent(new com.habitat.api.event.ApplicationSubmittedEvent(saved.getId()));
+
         return ApplicationResponse.from(saved);
     }
 

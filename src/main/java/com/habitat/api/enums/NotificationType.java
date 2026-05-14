@@ -40,6 +40,20 @@ public enum NotificationType {
      * and move-in is locked in.
      */
     LEASE_SIGNED_LANDLORD(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Landlord / agent gets this when a tenant submits an application
+     * against one of their units. Backroom-aligned naming.
+     */
+    APPLICATION_RECEIVED(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Tenant-side mirror: "we got your application" confirmation. Habitat
+     * extension over backroom — backroom only pushed to the manager.
+     */
+    APPLICATION_SUBMITTED_TENANT(NotificationCategory.MESSAGING,
             EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL));
 
     private final NotificationCategory category;

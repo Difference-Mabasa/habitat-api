@@ -80,6 +80,7 @@ class ApplicationServiceTest {
         assertThat(saved.getTenant()).isSameAs(tenant);
         assertThat(saved.getUnit()).isSameAs(unit);
         assertThat(out.status()).isEqualTo(ApplicationStatus.SUBMITTED);
+        verify(events).publishEvent(any(com.habitat.api.event.ApplicationSubmittedEvent.class));
     }
 
     @Test
