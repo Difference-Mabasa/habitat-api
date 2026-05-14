@@ -93,4 +93,22 @@ public interface PropertyRepository extends JpaRepository<Property, UUID> {
             @Param("listedStatus") PropertyStatus listedStatus,
             Pageable pageable
     );
+
+    /** Total properties at a given status — drives the landing-stats "active listings" count. */
+    long countByStatus(PropertyStatus status);
+
+    /**
+     * Distinct non-blank suburbs across properties at a given status —
+     * drives the landing-stats "suburbs covered" count. Mirrors the
+     * blank-filter used by {@link #findPopularSuburbs} so the two stats
+     * stay consistent with each other.
+     */
+    @Query("""
+            SELECT COUNT(DISTINCT p.suburb)
+            FROM Property p
+            WHERE p.status = :status
+              AND p.suburb IS NOT NULL
+              AND TRIM(p.suburb) <> ''
+            """)
+    long countDistinctSuburbsByStatus(@Param("status") PropertyStatus status);
 }

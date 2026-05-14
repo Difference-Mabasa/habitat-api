@@ -41,6 +41,10 @@ public final class ApiRoutes {
     public static final String PROPERTIES_POPULAR_AREAS = PROPERTIES + "/popular-areas";
     public static final String UNITS = BASE + "/units";
 
+    // Landing-page aggregates (public)
+    public static final String LANDING = BASE + "/landing";
+    public static final String LANDING_STATS = LANDING + "/stats";
+
     /**
      * UI route the welcome notification's CTA points at. Not an API path —
      * shipped here so any future surface that needs to deep-link to the
