@@ -10,6 +10,12 @@
         mutable refs (List, OffsetDateTime, byte[]) without defensive copies.
         Acceptable here: these objects are constructed once and travel through
         Jackson serialization or Spring DI, not mutated post-construction.
+
+        Extended to controllers + services + enums + events for the same
+        reason: Lombok @RequiredArgsConstructor stores final injected Spring
+        beans (themselves singletons), never reassigned, never mutated.
+        Event records pass an entity ref read-only by listeners. The enum's
+        defaultChannels is constructed once at class-load time.
     -->
     <Match>
         <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
@@ -17,7 +23,10 @@
             <Package name="~com\.habitat\.api\.dto.*"/>
             <Package name="com.habitat.api.entity"/>
             <Package name="com.habitat.api.security"/>
-            <Class name="com.habitat.api.service.TokenBlocklistService"/>
+            <Package name="com.habitat.api.controller"/>
+            <Package name="com.habitat.api.service"/>
+            <Package name="com.habitat.api.enums"/>
+            <Package name="com.habitat.api.event"/>
         </Or>
     </Match>
 
