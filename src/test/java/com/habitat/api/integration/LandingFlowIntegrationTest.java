@@ -56,6 +56,7 @@ class LandingFlowIntegrationTest {
                 .andExpect(jsonPath("$.activeListings").exists())
                 .andExpect(jsonPath("$.registeredTenants").exists())
                 .andExpect(jsonPath("$.suburbsCovered").exists())
+                .andExpect(jsonPath("$.tenantsLast7Days").exists())
                 .andReturn().getResponse().getContentAsString();
         JsonNode root = json.readTree(body);
 
@@ -66,10 +67,52 @@ class LandingFlowIntegrationTest {
         assertThat(root.get("activeListings").asLong()).isPositive();
         assertThat(root.get("registeredTenants").asLong()).isPositive();
         assertThat(root.get("suburbsCovered").asLong()).isPositive();
+        // tenantsLast7Days is non-negative — could be zero if seed runs
+        // are an old fixture; positive when seeds were applied recently.
+        assertThat(root.get("tenantsLast7Days").asLong()).isNotNegative();
 
         // suburbsCovered is always <= activeListings (each listing
         // contributes at most one distinct suburb).
         assertThat(root.get("suburbsCovered").asLong())
                 .isLessThanOrEqualTo(root.get("activeListings").asLong());
+        // tenantsLast7Days is always <= registeredTenants (subset of the
+        // total active-role=USER pool).
+        assertThat(root.get("tenantsLast7Days").asLong())
+                .isLessThanOrEqualTo(root.get("registeredTenants").asLong());
+    }
+
+    @Test
+    void cities_ranks_seeded_cities_by_listing_count() throws Exception {
+        String body = mvc.perform(get(ApiRoutes.LANDING_CITIES).param("size", "10"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode root = json.readTree(body);
+
+        // V10..V12 seed properties across several cities. We assert
+        // basic shape + the live-data invariant (count > 0 means we hit
+        // the real query, not the editorial fallback).
+        assertThat(root.isArray()).isTrue();
+        assertThat(root.size()).isBetween(1, 10);
+        for (int i = 0; i < root.size(); i++) {
+            assertThat(root.get(i).get("name").asText()).isNotBlank();
+            assertThat(root.get(i).get("listingCount").asLong()).isGreaterThan(0L);
+        }
+
+        // Counts are monotonically non-increasing.
+        long prev = Long.MAX_VALUE;
+        for (int i = 0; i < root.size(); i++) {
+            long count = root.get(i).get("listingCount").asLong();
+            assertThat(count).isLessThanOrEqualTo(prev);
+            prev = count;
+        }
+    }
+
+    @Test
+    void cities_uses_default_size_seven_when_not_specified() throws Exception {
+        String body = mvc.perform(get(ApiRoutes.LANDING_CITIES))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode root = json.readTree(body);
+        assertThat(root.size()).isLessThanOrEqualTo(7);
     }
 }

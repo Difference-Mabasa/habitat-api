@@ -1,5 +1,6 @@
 package com.habitat.api.repository;
 
+import com.habitat.api.dto.landing.PopularCityResponse;
 import com.habitat.api.dto.property.PopularAreaResponse;
 import com.habitat.api.entity.Property;
 import com.habitat.api.enums.PropertyStatus;
@@ -111,4 +112,27 @@ public interface PropertyRepository extends JpaRepository<Property, UUID> {
               AND TRIM(p.suburb) <> ''
             """)
     long countDistinctSuburbsByStatus(@Param("status") PropertyStatus status);
+
+    /**
+     * Cities with the most LISTED properties — drives the "Trusted across"
+     * marquee on the landing. Same shape and ordering contract as
+     * {@link #findPopularSuburbs} (count desc, name asc tiebreaker) but at
+     * the broader city granularity (Johannesburg, Cape Town, etc.).
+     */
+    @Query("""
+            SELECT new com.habitat.api.dto.landing.PopularCityResponse(
+                    p.city,
+                    COUNT(p)
+            )
+            FROM Property p
+            WHERE p.status = :listedStatus
+              AND p.city IS NOT NULL
+              AND TRIM(p.city) <> ''
+            GROUP BY p.city
+            ORDER BY COUNT(p) DESC, p.city ASC
+            """)
+    List<PopularCityResponse> findPopularCities(
+            @Param("listedStatus") PropertyStatus listedStatus,
+            Pageable pageable
+    );
 }

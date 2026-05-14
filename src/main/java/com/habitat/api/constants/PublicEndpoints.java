@@ -15,6 +15,7 @@ public final class PublicEndpoints {
             ApiRoutes.AUTH_OAUTH2_EXCHANGE,
             ApiRoutes.HEALTH,
             ApiRoutes.LANDING_STATS,
+            ApiRoutes.LANDING_CITIES,
             ApiRoutes.DOCS,
             ApiRoutes.DOCS_API,
             "/actuator/health",

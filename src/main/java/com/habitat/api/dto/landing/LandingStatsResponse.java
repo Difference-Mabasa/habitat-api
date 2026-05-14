@@ -1,19 +1,21 @@
 package com.habitat.api.dto.landing;
 
 /**
- * Public payload for {@code GET /landing/stats}. Three honest counts that
- * power the landlord-hero trust strip on the marketing landing page.
+ * Public payload for {@code GET /landing/stats}. Honest counts that power
+ * the landlord-hero trust strip + floating proof cards on the landing.
  *
  * <ul>
  *   <li>{@code activeListings} — properties with status {@code LISTED}.</li>
- *   <li>{@code registeredTenants} — users with role {@code USER}.
- *       Notes that this includes accounts that also manage properties (the
- *       {@code USER} role covers both tenants and landlords per the Role
- *       enum's docs); the landing copy labels this stat
- *       "Registered tenants" because pre-launch the data isn't fine-grained
- *       enough to distinguish lease-holders from landlords-only.</li>
+ *   <li>{@code registeredTenants} — users whose active role is {@code USER}
+ *       (covers both prospective tenants and landlord-only accounts per
+ *       the Role enum's docs; surfaced under "Registered tenants" because
+ *       pre-launch the data isn't fine-grained enough for stricter
+ *       distinction).</li>
  *   <li>{@code suburbsCovered} — distinct non-blank suburb values across
  *       {@code LISTED} properties.</li>
+ *   <li>{@code tenantsLast7Days} — USER-active-role accounts created
+ *       within the rolling 7-day window ending now. Drives the "This week"
+ *       momentum card; zero is a legitimate value during quiet weeks.</li>
  * </ul>
  *
  * All counts are {@code long} so JSON serialisation never silently
@@ -22,5 +24,6 @@ package com.habitat.api.dto.landing;
 public record LandingStatsResponse(
         long activeListings,
         long registeredTenants,
-        long suburbsCovered
+        long suburbsCovered,
+        long tenantsLast7Days
 ) {}

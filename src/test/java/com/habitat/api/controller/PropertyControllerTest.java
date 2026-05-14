@@ -66,7 +66,7 @@ class PropertyControllerTest {
                 PROP_ID, "Sandton Villa", "Sandton", "Johannesburg", "Gauteng",
                 -26.1, 28.0, PropertyType.HOUSE, "https://img/1.jpg",
                 UNIT_ID, UnitType.HOUSE, new BigDecimal("45000"), 4, 3, 320,
-                1, 1
+                1, 1, OffsetDateTime.parse("2026-05-01T08:00:00Z")
         );
         PageResponse<PropertySummary> page = PageResponse.<PropertySummary>builder()
                 .content(List.of(summary)).page(0).size(20).totalElements(1L).totalPages(1).build();

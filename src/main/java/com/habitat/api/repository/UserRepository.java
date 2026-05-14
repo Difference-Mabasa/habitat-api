@@ -4,6 +4,7 @@ import com.habitat.api.entity.User;
 import com.habitat.api.enums.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,4 +25,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      * distinction.
      */
     long countByActiveRole(Role activeRole);
+
+    /**
+     * Recently-joined users at a given active role — drives the landing
+     * hero's "This week" momentum card. Pass the cutoff timestamp
+     * (typically {@code now - 7 days}) and we return everyone whose
+     * {@code createdAt} is strictly after it.
+     */
+    long countByActiveRoleAndCreatedAtAfter(Role activeRole, OffsetDateTime cutoff);
 }

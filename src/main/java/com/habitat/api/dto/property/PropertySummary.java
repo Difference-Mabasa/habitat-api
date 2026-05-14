@@ -8,6 +8,7 @@ import com.habitat.api.enums.UnitStatus;
 import com.habitat.api.enums.UnitType;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.UUID;
 
@@ -33,7 +34,13 @@ public record PropertySummary(
         Integer headlineBaths,
         Integer headlineSqm,
         int totalUnits,
-        int availableUnits
+        int availableUnits,
+        /**
+         * When the property was first created. Surfaced so callers that
+         * sort by recency (the landing "Just listed" card, for example)
+         * can render a relative-time subline without a second fetch.
+         */
+        OffsetDateTime createdAt
 ) {
     public static PropertySummary from(Property p) {
         Unit head = p.getUnits().stream()
@@ -65,7 +72,8 @@ public record PropertySummary(
                 head == null ? null : head.getBathrooms(),
                 head == null ? null : head.getSqm(),
                 p.getUnits().size(),
-                available
+                available,
+                p.getCreatedAt()
         );
     }
 }

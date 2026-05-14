@@ -44,6 +44,7 @@ public final class ApiRoutes {
     // Landing-page aggregates (public)
     public static final String LANDING = BASE + "/landing";
     public static final String LANDING_STATS = LANDING + "/stats";
+    public static final String LANDING_CITIES = LANDING + "/cities";
 
     /**
      * UI route the welcome notification's CTA points at. Not an API path —

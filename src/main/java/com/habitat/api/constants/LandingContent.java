@@ -29,5 +29,23 @@ public final class LandingContent {
             "Camps Bay"
     );
 
+    /**
+     * Hand-curated SA city names rendered as the "Trusted across" marquee
+     * fallback when the catalogue has no LISTED properties yet. Order is
+     * the same hardcoded list the strip carried before the endpoint went
+     * live; matches the case-insensitive substring matcher in
+     * {@code PropertyRepository.search} so each value works as a
+     * {@code /browse?location=…} target.
+     */
+    public static final List<String> EDITORIAL_CITIES = List.of(
+            "Johannesburg",
+            "Cape Town",
+            "Durban",
+            "Pretoria",
+            "Gqeberha",
+            "Polokwane",
+            "Bloemfontein"
+    );
+
     private LandingContent() {}
 }
