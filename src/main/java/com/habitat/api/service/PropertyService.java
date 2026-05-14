@@ -1,9 +1,11 @@
 package com.habitat.api.service;
 
 import com.habitat.api.constants.ErrorMessages;
+import com.habitat.api.constants.LandingContent;
 import com.habitat.api.dto.PageResponse;
 import com.habitat.api.dto.property.CreatePropertyRequest;
 import com.habitat.api.dto.property.CreateUnitRequest;
+import com.habitat.api.dto.property.PopularAreaResponse;
 import com.habitat.api.dto.property.PropertyDetailResponse;
 import com.habitat.api.dto.property.PropertySummary;
 import com.habitat.api.dto.property.UnitResponse;
@@ -187,6 +189,32 @@ public class PropertyService {
 
     private static boolean contains(String haystack, String needleLower) {
         return haystack != null && haystack.toLowerCase().contains(needleLower);
+    }
+
+    /** Hard cap on {@code GET /properties/popular-areas?size=}. */
+    static final int POPULAR_AREAS_MAX_SIZE = 20;
+
+    /** Floor for the same param — negative / zero get coerced to this. */
+    static final int POPULAR_AREAS_MIN_SIZE = 1;
+
+    /**
+     * Suburbs with the most LISTED properties, capped at {@code size}.
+     * Returns an editorial fallback ({@link LandingContent#EDITORIAL_AREAS}
+     * with {@code listingCount = 0}) when no real listings exist yet so
+     * the landing page never renders an empty "Popular: " line.
+     */
+    @Transactional(readOnly = true)
+    public List<PopularAreaResponse> popularAreas(int size) {
+        int safeSize = Math.min(POPULAR_AREAS_MAX_SIZE, Math.max(POPULAR_AREAS_MIN_SIZE, size));
+        List<PopularAreaResponse> live = properties.findPopularSuburbs(
+                PropertyStatus.LISTED, PageRequest.of(0, safeSize));
+        if (!live.isEmpty()) {
+            return live;
+        }
+        return LandingContent.EDITORIAL_AREAS.stream()
+                .limit(safeSize)
+                .map(name -> new PopularAreaResponse(name, 0L))
+                .toList();
     }
 
     @Transactional(readOnly = true)

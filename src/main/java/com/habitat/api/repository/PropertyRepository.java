@@ -1,5 +1,6 @@
 package com.habitat.api.repository;
 
+import com.habitat.api.dto.property.PopularAreaResponse;
 import com.habitat.api.entity.Property;
 import com.habitat.api.enums.PropertyStatus;
 import com.habitat.api.enums.UnitType;
@@ -64,4 +65,32 @@ public interface PropertyRepository extends JpaRepository<Property, UUID> {
      * (agent-managed listings).
      */
     Page<Property> findByManagerIdOrderByCreatedAtDesc(UUID managerId, Pageable pageable);
+
+    /**
+     * Suburbs with the most LISTED properties — drives the "Popular: …"
+     * line on the landing page. Returns one row per non-blank suburb,
+     * ordered by listing count desc with the suburb name as a tiebreaker
+     * for stable results across pages.
+     *
+     * <p>Suburb is free-text on {@link Property}, so "Sandton" and
+     * "sandton " are different groups today. Acceptable while the
+     * catalogue is small; revisit (lower() + trim() + proper-case on
+     * return) once the property creation surface lets users type freely.
+     */
+    @Query("""
+            SELECT new com.habitat.api.dto.property.PopularAreaResponse(
+                    p.suburb,
+                    COUNT(p)
+            )
+            FROM Property p
+            WHERE p.status = :listedStatus
+              AND p.suburb IS NOT NULL
+              AND TRIM(p.suburb) <> ''
+            GROUP BY p.suburb
+            ORDER BY COUNT(p) DESC, p.suburb ASC
+            """)
+    List<PopularAreaResponse> findPopularSuburbs(
+            @Param("listedStatus") PropertyStatus listedStatus,
+            Pageable pageable
+    );
 }

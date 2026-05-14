@@ -5,6 +5,7 @@ import com.habitat.api.constants.ApiRoutes;
 import com.habitat.api.dto.PageResponse;
 import com.habitat.api.dto.property.CreatePropertyRequest;
 import com.habitat.api.dto.property.CreateUnitRequest;
+import com.habitat.api.dto.property.PopularAreaResponse;
 import com.habitat.api.dto.property.PropertyDetailResponse;
 import com.habitat.api.dto.property.PropertySummary;
 import com.habitat.api.dto.property.UnitResponse;
@@ -185,6 +186,33 @@ class PropertyControllerTest {
                         .content(json.writeValueAsString(req)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(UNIT_ID.toString()));
+    }
+
+    @Test
+    void popular_areas_returns_payload_with_default_size() throws Exception {
+        when(properties.popularAreas(3)).thenReturn(List.of(
+                new PopularAreaResponse("Sandton", 5L),
+                new PopularAreaResponse("Camps Bay", 3L),
+                new PopularAreaResponse("Umhlanga", 1L)
+        ));
+
+        mvc.perform(get(ApiRoutes.PROPERTIES_POPULAR_AREAS))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Sandton"))
+                .andExpect(jsonPath("$[0].listingCount").value(5))
+                .andExpect(jsonPath("$[2].name").value("Umhlanga"));
+
+        verify(properties).popularAreas(3);
+    }
+
+    @Test
+    void popular_areas_forwards_size_query_param() throws Exception {
+        when(properties.popularAreas(6)).thenReturn(List.of());
+
+        mvc.perform(get(ApiRoutes.PROPERTIES_POPULAR_AREAS).param("size", "6"))
+                .andExpect(status().isOk());
+
+        verify(properties).popularAreas(6);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────

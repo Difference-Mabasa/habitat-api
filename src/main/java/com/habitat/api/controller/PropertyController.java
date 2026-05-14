@@ -4,6 +4,7 @@ import com.habitat.api.constants.ApiRoutes;
 import com.habitat.api.dto.PageResponse;
 import com.habitat.api.dto.property.CreatePropertyRequest;
 import com.habitat.api.dto.property.CreateUnitRequest;
+import com.habitat.api.dto.property.PopularAreaResponse;
 import com.habitat.api.dto.property.PropertyDetailResponse;
 import com.habitat.api.dto.property.PropertySummary;
 import com.habitat.api.dto.property.UnitResponse;
@@ -52,6 +53,13 @@ public class PropertyController {
             @RequestParam(defaultValue = "20") int size
     ) {
         return properties.search(location, unitTypes, minPrice, maxPrice, minBeds, minSqm, sort, dir, page, size);
+    }
+
+    @GetMapping("/popular-areas")
+    public List<PopularAreaResponse> popularAreas(
+            @RequestParam(defaultValue = "3") int size
+    ) {
+        return properties.popularAreas(size);
     }
 
     @GetMapping("/{id}")

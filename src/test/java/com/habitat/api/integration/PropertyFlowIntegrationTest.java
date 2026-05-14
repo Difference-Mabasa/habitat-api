@@ -101,6 +101,40 @@ class PropertyFlowIntegrationTest {
     }
 
     @Test
+    void popular_areas_ranks_seeded_suburbs_by_listing_count() throws Exception {
+        String body = mvc.perform(get(ApiRoutes.PROPERTIES_POPULAR_AREAS).param("size", "5"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode root = json.readTree(body);
+
+        // V10 seeds 20 LISTED properties; the endpoint should surface real
+        // suburb groups, never the editorial fallback (count = 0).
+        assertThat(root.isArray()).isTrue();
+        assertThat(root.size()).isBetween(1, 5);
+        for (int i = 0; i < root.size(); i++) {
+            assertThat(root.get(i).get("name").asText()).isNotBlank();
+            assertThat(root.get(i).get("listingCount").asLong()).isGreaterThan(0L);
+        }
+
+        // Counts are monotonically non-increasing — the order contract.
+        long prev = Long.MAX_VALUE;
+        for (int i = 0; i < root.size(); i++) {
+            long count = root.get(i).get("listingCount").asLong();
+            assertThat(count).isLessThanOrEqualTo(prev);
+            prev = count;
+        }
+    }
+
+    @Test
+    void popular_areas_uses_default_size_three_when_not_specified() throws Exception {
+        String body = mvc.perform(get(ApiRoutes.PROPERTIES_POPULAR_AREAS))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode root = json.readTree(body);
+        assertThat(root.size()).isLessThanOrEqualTo(3);
+    }
+
+    @Test
     void type_filter_restricts_to_matching_unit_types() throws Exception {
         String body = mvc.perform(get(ApiRoutes.PROPERTIES).param("type", "STUDIO"))
                 .andExpect(status().isOk())

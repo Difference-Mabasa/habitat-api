@@ -38,6 +38,7 @@ public final class ApiRoutes {
 
     // Properties + units
     public static final String PROPERTIES = BASE + "/properties";
+    public static final String PROPERTIES_POPULAR_AREAS = PROPERTIES + "/popular-areas";
     public static final String UNITS = BASE + "/units";
 
     /**

@@ -4,6 +4,7 @@ import com.habitat.api.constants.ErrorMessages;
 import com.habitat.api.dto.PageResponse;
 import com.habitat.api.dto.property.CreatePropertyRequest;
 import com.habitat.api.dto.property.CreateUnitRequest;
+import com.habitat.api.dto.property.PopularAreaResponse;
 import com.habitat.api.dto.property.PropertyDetailResponse;
 import com.habitat.api.dto.property.PropertySummary;
 import com.habitat.api.dto.property.UnitResponse;
@@ -209,6 +210,65 @@ class PropertyServiceTest {
 
         PageResponse<PropertySummary> out = service.search(null, null, null, null, null, null, null, null, 0, 20);
         assertThat(out.content()).hasSize(1);
+    }
+
+    // ── popularAreas ──────────────────────────────────────────────────
+
+    @Test
+    void popularAreas_returns_live_ranking_when_repo_has_data() {
+        List<PopularAreaResponse> ranked = List.of(
+                new PopularAreaResponse("Sandton", 7L),
+                new PopularAreaResponse("Camps Bay", 4L),
+                new PopularAreaResponse("Umhlanga", 2L)
+        );
+        when(properties.findPopularSuburbs(eq(PropertyStatus.LISTED), any(Pageable.class)))
+                .thenReturn(ranked);
+
+        List<PopularAreaResponse> out = service.popularAreas(3);
+
+        assertThat(out).containsExactlyElementsOf(ranked);
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(properties).findPopularSuburbs(eq(PropertyStatus.LISTED), pageable.capture());
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(3);
+        assertThat(pageable.getValue().getPageNumber()).isZero();
+    }
+
+    @Test
+    void popularAreas_falls_back_to_editorial_list_when_repo_empty() {
+        when(properties.findPopularSuburbs(any(), any())).thenReturn(List.of());
+
+        List<PopularAreaResponse> out = service.popularAreas(3);
+
+        assertThat(out).extracting(PopularAreaResponse::name)
+                .containsExactly("Sandton", "Umhlanga", "Camps Bay");
+        assertThat(out).extracting(PopularAreaResponse::listingCount)
+                .containsOnly(0L);
+    }
+
+    @Test
+    void popularAreas_caps_size_at_20_and_floors_at_1() {
+        when(properties.findPopularSuburbs(any(), any())).thenReturn(List.of());
+
+        service.popularAreas(500);
+        service.popularAreas(0);
+        service.popularAreas(-3);
+
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(properties, org.mockito.Mockito.times(3))
+                .findPopularSuburbs(eq(PropertyStatus.LISTED), pageable.capture());
+        assertThat(pageable.getAllValues()).extracting(Pageable::getPageSize)
+                .containsExactly(20, 1, 1);
+    }
+
+    @Test
+    void popularAreas_editorial_fallback_respects_requested_size() {
+        when(properties.findPopularSuburbs(any(), any())).thenReturn(List.of());
+
+        List<PopularAreaResponse> out = service.popularAreas(2);
+
+        assertThat(out).hasSize(2);
+        assertThat(out).extracting(PopularAreaResponse::name)
+                .containsExactly("Sandton", "Umhlanga");
     }
 
     // ── getById ───────────────────────────────────────────────────────
