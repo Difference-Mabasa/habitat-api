@@ -6,6 +6,9 @@ import com.habitat.api.dto.lease.LeaseResponse;
 import com.habitat.api.dto.lease.SignLeaseRequest;
 import com.habitat.api.entity.Application;
 import com.habitat.api.entity.Lease;
+import com.habitat.api.entity.Property;
+import com.habitat.api.entity.Unit;
+import com.habitat.api.entity.User;
 import com.habitat.api.enums.ApplicationStatus;
 import com.habitat.api.enums.LeaseStatus;
 import com.habitat.api.enums.LeaseTemplate;
@@ -30,6 +33,10 @@ import java.util.UUID;
  * invoice; signed via mock OTP by tenant + landlord. Once both
  * signatures are present the parent application advances toward
  * COMPLETED (slice 4 closes that final step).
+ *
+ * <p>Reads + auth checks pull off the lease's direct party refs
+ * ({@code tenant}, {@code landlord}, {@code unit}, {@code property})
+ * — the parent application is a nullable trace pointer only.
  */
 @Service
 @RequiredArgsConstructor
@@ -42,20 +49,29 @@ public class LeaseService {
     /**
      * Idempotently issue a lease for an application whose deposit has
      * just been paid. Re-paying or flapping doesn't duplicate the row.
-     * Returns the lease and advances the parent application to
-     * {@code LEASE_PENDING_SIGNATURES}.
+     * Snapshots the party graph at issuance: even if the application
+     * is later archived the lease still resolves to tenant + landlord
+     * + unit + property.
      */
     @Transactional
     public Lease issueForPaidApplication(Application application) {
         return leases.findByApplication_Id(application.getId())
                 .orElseGet(() -> {
-                    BigDecimal monthly = application.getUnit().getPrice();
+                    Unit unit = application.getUnit();
+                    Property property = unit.getProperty();
+                    User tenant = application.getTenant();
+                    User landlord = property.getManager();
+                    BigDecimal monthly = unit.getPrice();
                     BigDecimal deposit = monthly == null ? BigDecimal.ZERO : monthly;
                     LocalDate start = application.getMoveInDate() == null
                             ? LocalDate.now().plusDays(7)
                             : application.getMoveInDate();
                     Lease fresh = Lease.builder()
                             .application(application)
+                            .tenant(tenant)
+                            .landlord(landlord)
+                            .unit(unit)
+                            .property(property)
                             .template(LeaseTemplate.RHA_STANDARD)
                             .monthlyRent(monthly == null ? BigDecimal.ZERO : monthly)
                             .deposit(deposit)
@@ -76,7 +92,7 @@ public class LeaseService {
     @Transactional(readOnly = true)
     public List<LeaseResponse> listForTenant() {
         UUID me = security.requireUserId();
-        return leases.findByApplication_Tenant_IdOrderByCreatedAtDesc(me).stream()
+        return leases.findByTenant_IdOrderByCreatedAtDesc(me).stream()
                 .map(LeaseResponse::from)
                 .toList();
     }
@@ -85,7 +101,7 @@ public class LeaseService {
     @Transactional(readOnly = true)
     public List<LeaseResponse> listForLandlord() {
         UUID me = security.requireUserId();
-        return leases.findByApplication_Unit_Property_Manager_IdOrderByCreatedAtDesc(me).stream()
+        return leases.findByLandlord_IdOrderByCreatedAtDesc(me).stream()
                 .map(LeaseResponse::from)
                 .toList();
     }
@@ -115,11 +131,8 @@ public class LeaseService {
             throw new ConflictException(ErrorMessages.LEASE_NOT_SIGNABLE);
         }
 
-        var application = lease.getApplication();
-        UUID tenantId = application.getTenant().getId();
-        UUID landlordId = application.getUnit().getProperty().getManager() == null
-                ? null
-                : application.getUnit().getProperty().getManager().getId();
+        UUID tenantId = lease.getTenant().getId();
+        UUID landlordId = lease.getLandlord().getId();
 
         OffsetDateTime now = OffsetDateTime.now();
         if (me.equals(tenantId)) {
@@ -169,9 +182,8 @@ public class LeaseService {
     }
 
     private void requirePartyOrThrow(Lease lease, UUID callerId) {
-        UUID tenantId = lease.getApplication().getTenant().getId();
-        var manager = lease.getApplication().getUnit().getProperty().getManager();
-        UUID landlordId = manager == null ? null : manager.getId();
+        UUID tenantId = lease.getTenant().getId();
+        UUID landlordId = lease.getLandlord().getId();
         if (!callerId.equals(tenantId) && !callerId.equals(landlordId)) {
             throw new ForbiddenException(ErrorMessages.FORBIDDEN);
         }

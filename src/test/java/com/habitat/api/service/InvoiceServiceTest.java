@@ -181,8 +181,14 @@ class InvoiceServiceTest {
 
     // ── Helpers ───────────────────────────────────────────────────────
 
+    private static final UUID LANDLORD_ID =
+            UUID.fromString("66666666-6666-6666-6666-666666666666");
+
     private Application applicationWith(ApplicationStatus status, BigDecimal price) {
-        Property property = Property.builder().build();
+        User manager = User.builder()
+                .firstName("L").surname("Landlord").email("l@example.co.za").build();
+        setId(manager, LANDLORD_ID);
+        Property property = Property.builder().manager(manager).build();
         setId(property, PROP_ID);
         Unit unit = Unit.builder().status(UnitStatus.AVAILABLE).property(property).price(price).build();
         setId(unit, UNIT_ID);
@@ -196,9 +202,13 @@ class InvoiceServiceTest {
     }
 
     private Invoice invoiceWith(InvoiceStatus status, Application app) {
+        var property = app.getUnit().getProperty();
         Invoice i = Invoice.builder()
                 .application(app)
                 .tenant(app.getTenant())
+                .landlord(property.getManager())
+                .unit(app.getUnit())
+                .property(property)
                 .depositAmount(new BigDecimal("5000"))
                 .firstMonthRent(new BigDecimal("5000"))
                 .totalAmount(new BigDecimal("10000"))

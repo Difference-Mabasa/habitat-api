@@ -8,8 +8,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,8 +23,14 @@ import java.time.OffsetDateTime;
 
 /**
  * Deposit + first-month invoice generated when a landlord approves an
- * application. One invoice per application (unique FK). Paying it
- * advances the parent application to DEPOSIT_PAID.
+ * application.
+ *
+ * <p><b>Identity is independent of the parent application</b> (V22):
+ * the invoice carries its own {@link #tenant}, {@link #landlord},
+ * {@link #unit}, and {@link #property} references. {@link #application}
+ * is a nullable trace pointer — accounting records survive their
+ * upstream application being archived or hard-deleted, and FKs to
+ * users / units / properties are {@code ON DELETE RESTRICT}.
  */
 @Getter
 @Setter
@@ -36,13 +42,26 @@ import java.time.OffsetDateTime;
 @SQLRestriction("deleted_at IS NULL")
 public class Invoice extends BaseEntity {
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "application_id", nullable = false, unique = true)
+    /** Nullable trace pointer — kept for "which application this invoice billed". */
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "application_id", unique = true)
     private Application application;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "tenant_id", nullable = false)
     private User tenant;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "landlord_id", nullable = false)
+    private User landlord;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "unit_id", nullable = false)
+    private Unit unit;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "property_id", nullable = false)
+    private Property property;
 
     @Column(name = "deposit_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal depositAmount;

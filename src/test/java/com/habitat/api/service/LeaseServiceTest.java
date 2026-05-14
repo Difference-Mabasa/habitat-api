@@ -67,6 +67,11 @@ class LeaseServiceTest {
         assertThat(saved.getStatus()).isEqualTo(LeaseStatus.PENDING_SIGNATURES);
         assertThat(saved.getTemplate()).isEqualTo(LeaseTemplate.RHA_STANDARD);
         assertThat(saved.getLeaseRef()).startsWith("HB-LSE-");
+        // V22: direct party identity snapshotted at issuance.
+        assertThat(saved.getTenant().getId()).isEqualTo(TENANT_ID);
+        assertThat(saved.getLandlord().getId()).isEqualTo(LANDLORD_ID);
+        assertThat(saved.getUnit().getId()).isEqualTo(UNIT_ID);
+        assertThat(saved.getProperty().getId()).isEqualTo(PROP_ID);
         assertThat(app.getStatus()).isEqualTo(ApplicationStatus.LEASE_PENDING_SIGNATURES);
         assertThat(out).isSameAs(saved);
     }
@@ -88,7 +93,7 @@ class LeaseServiceTest {
         Application app = applicationWith(ApplicationStatus.LEASE_PENDING_SIGNATURES, new BigDecimal("9000"));
         Lease l = leaseWith(LeaseStatus.PENDING_SIGNATURES, app);
         when(security.requireUserId()).thenReturn(TENANT_ID);
-        when(leases.findByApplication_Tenant_IdOrderByCreatedAtDesc(TENANT_ID))
+        when(leases.findByTenant_IdOrderByCreatedAtDesc(TENANT_ID))
                 .thenReturn(java.util.List.of(l));
 
         var out = service.listForTenant();
@@ -240,8 +245,13 @@ class LeaseServiceTest {
     }
 
     private Lease leaseWith(LeaseStatus status, Application app) {
+        var property = app.getUnit().getProperty();
         Lease l = Lease.builder()
                 .application(app)
+                .tenant(app.getTenant())
+                .landlord(property.getManager())
+                .unit(app.getUnit())
+                .property(property)
                 .template(LeaseTemplate.RHA_STANDARD)
                 .monthlyRent(app.getUnit().getPrice())
                 .deposit(app.getUnit().getPrice())

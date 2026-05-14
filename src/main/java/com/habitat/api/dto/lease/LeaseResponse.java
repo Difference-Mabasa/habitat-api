@@ -16,12 +16,13 @@ import java.util.UUID;
 
 /**
  * Public payload for {@code GET /leases/me}, {@code GET /leases/{id}},
- * sign + decline. Carries application + property + party context
- * inline so the design's lease screen renders without round-trips.
+ * sign + decline. Reads its identity off the lease's direct refs —
+ * the parent application is a nullable trace pointer only.
  */
 public record LeaseResponse(
         UUID id,
         String leaseRef,
+        /** Null after the parent application has been archived (V22 trace pointer). */
         UUID applicationId,
         LeaseStatus status,
         LeaseTemplate template,
@@ -33,6 +34,7 @@ public record LeaseResponse(
         OffsetDateTime landlordSignedAt,
         String declineReason,
         OffsetDateTime createdAt,
+        /** Nullable — present while the application row still exists. */
         ApplicationRef application,
         PartyRef tenant,
         PartyRef landlord,
@@ -41,12 +43,13 @@ public record LeaseResponse(
 ) {
     public static LeaseResponse from(Lease l) {
         var application = l.getApplication();
-        var unit = application.getUnit();
-        var property = unit.getProperty();
+        ApplicationRef appRef = application == null
+                ? null
+                : new ApplicationRef(application.getId(), application.getStatus());
         return new LeaseResponse(
                 l.getId(),
                 l.getLeaseRef(),
-                application.getId(),
+                application == null ? null : application.getId(),
                 l.getStatus(),
                 l.getTemplate(),
                 l.getMonthlyRent(),
@@ -57,11 +60,11 @@ public record LeaseResponse(
                 l.getLandlordSignedAt(),
                 l.getDeclineReason(),
                 l.getCreatedAt(),
-                new ApplicationRef(application.getId(), application.getStatus()),
-                PartyRef.from(application.getTenant()),
-                PartyRef.from(property.getManager()),
-                UnitRef.from(unit),
-                PropertyRef.from(property)
+                appRef,
+                PartyRef.from(l.getTenant()),
+                PartyRef.from(l.getLandlord()),
+                UnitRef.from(l.getUnit()),
+                PropertyRef.from(l.getProperty())
         );
     }
 

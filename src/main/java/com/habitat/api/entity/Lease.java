@@ -9,6 +9,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -24,8 +25,15 @@ import java.time.OffsetDateTime;
 
 /**
  * Residential lease agreement between landlord and tenant. Generated
- * the moment the tenant pays the deposit invoice. Both parties sign
- * (mocked OTP today) to advance the parent application to COMPLETED.
+ * the moment the tenant pays the deposit invoice.
+ *
+ * <p><b>Identity is independent of the parent application</b> (V22):
+ * the lease carries its own {@link #tenant}, {@link #landlord},
+ * {@link #unit}, and {@link #property} references. {@link #application}
+ * is a nullable trace pointer — if the application row is ever archived
+ * or hard-deleted, the lease still resolves to all parties and the
+ * unit. FKs to users / units / properties are {@code ON DELETE
+ * RESTRICT} at the schema level.
  */
 @Getter
 @Setter
@@ -37,9 +45,26 @@ import java.time.OffsetDateTime;
 @SQLRestriction("deleted_at IS NULL")
 public class Lease extends BaseEntity {
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "application_id", nullable = false, unique = true)
+    /** Nullable trace pointer — kept for "which application generated this lease" lineage. */
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "application_id", unique = true)
     private Application application;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private User tenant;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "landlord_id", nullable = false)
+    private User landlord;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "unit_id", nullable = false)
+    private Unit unit;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "property_id", nullable = false)
+    private Property property;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "template", nullable = false, length = 40)

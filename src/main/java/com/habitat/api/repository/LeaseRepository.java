@@ -9,11 +9,12 @@ import java.util.UUID;
 
 public interface LeaseRepository extends JpaRepository<Lease, UUID> {
 
-    /** Leases belonging to a tenant. Newest first. */
-    List<Lease> findByApplication_Tenant_IdOrderByCreatedAtDesc(UUID tenantId);
+    /** Leases belonging to a tenant. Newest first. Reads off the direct {@code tenant_id} (V22). */
+    List<Lease> findByTenant_IdOrderByCreatedAtDesc(UUID tenantId);
 
-    /** Leases on properties the user manages. */
-    List<Lease> findByApplication_Unit_Property_Manager_IdOrderByCreatedAtDesc(UUID managerId);
+    /** Leases on properties the user manages. Reads off the direct {@code landlord_id} (V22). */
+    List<Lease> findByLandlord_IdOrderByCreatedAtDesc(UUID landlordId);
 
+    /** Lookup by the optional trace pointer — for idempotent issuance from an application. */
     Optional<Lease> findByApplication_Id(UUID applicationId);
 }

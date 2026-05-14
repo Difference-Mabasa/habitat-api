@@ -35,13 +35,19 @@ public record InvoiceResponse(
         PropertyRef property
 ) {
     public static InvoiceResponse from(Invoice i) {
+        // V22: read off the invoice's direct refs — application is a
+        // nullable trace pointer only.
         var application = i.getApplication();
-        var unit = application.getUnit();
-        var property = unit.getProperty();
+        var unit = i.getUnit();
+        var property = i.getProperty();
+        ApplicationRef appRef = application == null
+                ? null
+                : new ApplicationRef(application.getId(), application.getStatus());
+        UUID appId = application == null ? null : application.getId();
         return new InvoiceResponse(
                 i.getId(),
                 i.getInvoiceRef(),
-                application.getId(),
+                appId,
                 i.getTenant().getId(),
                 i.getStatus(),
                 i.getDepositAmount(),
@@ -52,7 +58,7 @@ public record InvoiceResponse(
                 i.getPaidAt(),
                 i.getPaymentReference(),
                 i.getCreatedAt(),
-                new ApplicationRef(application.getId(), application.getStatus()),
+                appRef,
                 UnitRef.from(unit),
                 new PropertyRef(
                         property.getId(),

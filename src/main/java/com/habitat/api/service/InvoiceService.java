@@ -50,13 +50,18 @@ public class InvoiceService {
     public Invoice issueForApprovedApplication(Application application) {
         return invoices.findByApplication_Id(application.getId())
                 .orElseGet(() -> {
-                    BigDecimal price = application.getUnit().getPrice();
+                    var unit = application.getUnit();
+                    var property = unit.getProperty();
+                    BigDecimal price = unit.getPrice();
                     BigDecimal deposit = price == null ? BigDecimal.ZERO : price;
                     BigDecimal firstMonth = price == null ? BigDecimal.ZERO : price;
                     BigDecimal total = deposit.add(firstMonth);
                     Invoice fresh = Invoice.builder()
                             .application(application)
                             .tenant(application.getTenant())
+                            .landlord(property.getManager())
+                            .unit(unit)
+                            .property(property)
                             .depositAmount(deposit)
                             .firstMonthRent(firstMonth)
                             .totalAmount(total)
@@ -119,18 +124,25 @@ public class InvoiceService {
         invoice.setPaidAt(OffsetDateTime.now());
         invoice.setPaymentReference(req == null ? null : req.paymentReference());
 
+        // The application trace pointer is nullable after V22 — if the
+        // application has been archived since the invoice was issued
+        // we still record the payment, we just can't advance any
+        // downstream state. That's expected for late-paid invoices.
         Application application = invoice.getApplication();
-        if (application.getStatus() == ApplicationStatus.INVOICE_SENT) {
-            application.setStatus(ApplicationStatus.DEPOSIT_PAID);
+        if (application != null) {
+            if (application.getStatus() == ApplicationStatus.INVOICE_SENT) {
+                application.setStatus(ApplicationStatus.DEPOSIT_PAID);
+            }
+            // Paying the deposit auto-generates the lease and bumps the
+            // application to LEASE_PENDING_SIGNATURES so the tenant's
+            // sign-lease screen has something to render.
+            if (application.getStatus() == ApplicationStatus.DEPOSIT_PAID) {
+                leaseService.issueForPaidApplication(application);
+            }
         }
-        // Paying the deposit auto-generates the lease and bumps the
-        // application to LEASE_PENDING_SIGNATURES so the tenant's
-        // sign-lease screen has something to render.
-        if (application.getStatus() == ApplicationStatus.DEPOSIT_PAID) {
-            leaseService.issueForPaidApplication(application);
-        }
-        log.info("invoice {} paid by {} → application {} = {}",
-                invoice.getInvoiceRef(), me, application.getId(), application.getStatus());
+        log.info("invoice {} paid by {} → application status = {}",
+                invoice.getInvoiceRef(), me,
+                application == null ? "(archived)" : application.getStatus());
         return InvoiceResponse.from(invoice);
     }
 
