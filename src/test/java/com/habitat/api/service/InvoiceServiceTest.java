@@ -37,6 +37,7 @@ import static org.mockito.Mockito.when;
 class InvoiceServiceTest {
 
     @Mock InvoiceRepository invoices;
+    @Mock LeaseService leaseService;
     @Mock SecurityUtils security;
     @InjectMocks InvoiceService service;
 

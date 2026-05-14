@@ -32,6 +32,11 @@ public final class ErrorMessages {
     public static final String INVOICE_NOT_FOUND = "Invoice not found.";
     public static final String INVOICE_NOT_PAYABLE =
             "This invoice can't be paid in its current state.";
+    public static final String LEASE_NOT_FOUND = "Lease not found.";
+    public static final String LEASE_NOT_SIGNABLE =
+            "This lease can't be signed in its current state.";
+    public static final String LEASE_ALREADY_SIGNED =
+            "You've already signed this lease.";
     public static final String SYSTEM_IN_APP_CANNOT_BE_MUTED =
             "Account & security in-app alerts can't be muted.";
 

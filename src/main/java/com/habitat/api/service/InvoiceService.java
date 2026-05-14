@@ -34,6 +34,7 @@ import java.util.UUID;
 public class InvoiceService {
 
     private final InvoiceRepository invoices;
+    private final LeaseService leaseService;
     private final SecurityUtils security;
 
     /** Default validity window for an unpaid invoice — 7 days from issue. */
@@ -121,6 +122,12 @@ public class InvoiceService {
         Application application = invoice.getApplication();
         if (application.getStatus() == ApplicationStatus.INVOICE_SENT) {
             application.setStatus(ApplicationStatus.DEPOSIT_PAID);
+        }
+        // Paying the deposit auto-generates the lease and bumps the
+        // application to LEASE_PENDING_SIGNATURES so the tenant's
+        // sign-lease screen has something to render.
+        if (application.getStatus() == ApplicationStatus.DEPOSIT_PAID) {
+            leaseService.issueForPaidApplication(application);
         }
         log.info("invoice {} paid by {} → application {} = {}",
                 invoice.getInvoiceRef(), me, application.getId(), application.getStatus());
