@@ -101,6 +101,24 @@ class PropertyFlowIntegrationTest {
     }
 
     @Test
+    void top_rated_returns_listed_properties_with_rating_fields() throws Exception {
+        String body = mvc.perform(get(ApiRoutes.PROPERTIES_TOP_RATED).param("size", "4"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode root = json.readTree(body);
+
+        assertThat(root.isArray()).isTrue();
+        assertThat(root.size()).isBetween(1, 4);
+        for (int i = 0; i < root.size(); i++) {
+            // Every row has the rating aggregate fields populated (default
+            // zero for un-reviewed seeded properties).
+            assertThat(root.get(i).has("avgRating")).isTrue();
+            assertThat(root.get(i).has("ratingCount")).isTrue();
+            assertThat(root.get(i).get("ratingCount").asInt()).isNotNegative();
+        }
+    }
+
+    @Test
     void popular_areas_ranks_seeded_suburbs_by_listing_count() throws Exception {
         String body = mvc.perform(get(ApiRoutes.PROPERTIES_POPULAR_AREAS).param("size", "5"))
                 .andExpect(status().isOk())

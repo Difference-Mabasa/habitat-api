@@ -66,7 +66,8 @@ class PropertyControllerTest {
                 PROP_ID, "Sandton Villa", "Sandton", "Johannesburg", "Gauteng",
                 -26.1, 28.0, PropertyType.HOUSE, "https://img/1.jpg",
                 UNIT_ID, UnitType.HOUSE, new BigDecimal("45000"), 4, 3, 320,
-                1, 1, OffsetDateTime.parse("2026-05-01T08:00:00Z")
+                1, 1, OffsetDateTime.parse("2026-05-01T08:00:00Z"),
+                new BigDecimal("4.50"), 12
         );
         PageResponse<PropertySummary> page = PageResponse.<PropertySummary>builder()
                 .content(List.of(summary)).page(0).size(20).totalElements(1L).totalPages(1).build();
@@ -213,6 +214,36 @@ class PropertyControllerTest {
                 .andExpect(status().isOk());
 
         verify(properties).popularAreas(6);
+    }
+
+    @Test
+    void top_rated_returns_summary_payload_with_default_size() throws Exception {
+        PropertySummary summary = new PropertySummary(
+                PROP_ID, "Sandton Villa", "Sandton", "Johannesburg", "Gauteng",
+                -26.1, 28.0, PropertyType.HOUSE, "https://img/1.jpg",
+                UNIT_ID, UnitType.HOUSE, new BigDecimal("45000"), 4, 3, 320,
+                1, 1, OffsetDateTime.parse("2026-05-01T08:00:00Z"),
+                new BigDecimal("4.80"), 12
+        );
+        when(properties.topRated(4)).thenReturn(List.of(summary));
+
+        mvc.perform(get(ApiRoutes.PROPERTIES_TOP_RATED))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value("Sandton Villa"))
+                .andExpect(jsonPath("$[0].avgRating").value(4.80))
+                .andExpect(jsonPath("$[0].ratingCount").value(12));
+
+        verify(properties).topRated(4);
+    }
+
+    @Test
+    void top_rated_forwards_size_query_param() throws Exception {
+        when(properties.topRated(8)).thenReturn(List.of());
+
+        mvc.perform(get(ApiRoutes.PROPERTIES_TOP_RATED).param("size", "8"))
+                .andExpect(status().isOk());
+
+        verify(properties).topRated(8);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────

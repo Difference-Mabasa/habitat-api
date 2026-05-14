@@ -62,6 +62,13 @@ public class PropertyController {
         return properties.popularAreas(size);
     }
 
+    @GetMapping("/top-rated")
+    public List<PropertySummary> topRated(
+            @RequestParam(defaultValue = "4") int size
+    ) {
+        return properties.topRated(size);
+    }
+
     @GetMapping("/{id}")
     public PropertyDetailResponse get(@PathVariable UUID id) {
         return properties.getById(id);

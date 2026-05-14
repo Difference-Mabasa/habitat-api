@@ -271,6 +271,41 @@ class PropertyServiceTest {
                 .containsExactly("Sandton", "Umhlanga");
     }
 
+    // ── topRated ──────────────────────────────────────────────────────
+
+    @Test
+    void topRated_passes_size_through_to_repo_and_maps_to_summaries() {
+        Property a = propertyWith("Sandton Villa", PropertyStatus.LISTED, "Sandton");
+        attachUnit(a, new BigDecimal("45000"), 4, 3, UnitStatus.AVAILABLE);
+        Property b = propertyWith("Camps Bay House", PropertyStatus.LISTED, "Camps Bay");
+        attachUnit(b, new BigDecimal("65000"), 4, 4, UnitStatus.AVAILABLE);
+        when(properties.findTopRated(eq(PropertyStatus.LISTED), any(Pageable.class)))
+                .thenReturn(List.of(a, b));
+
+        List<PropertySummary> out = service.topRated(4);
+
+        assertThat(out).extracting(PropertySummary::title)
+                .containsExactly("Sandton Villa", "Camps Bay House");
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(properties).findTopRated(eq(PropertyStatus.LISTED), pageable.capture());
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(4);
+    }
+
+    @Test
+    void topRated_caps_size_at_20_and_floors_at_1() {
+        when(properties.findTopRated(any(), any())).thenReturn(List.of());
+
+        service.topRated(500);
+        service.topRated(0);
+        service.topRated(-3);
+
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(properties, org.mockito.Mockito.times(3))
+                .findTopRated(eq(PropertyStatus.LISTED), pageable.capture());
+        assertThat(pageable.getAllValues()).extracting(Pageable::getPageSize)
+                .containsExactly(20, 1, 1);
+    }
+
     // ── getById ───────────────────────────────────────────────────────
 
     @Test

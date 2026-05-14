@@ -135,4 +135,21 @@ public interface PropertyRepository extends JpaRepository<Property, UUID> {
             @Param("listedStatus") PropertyStatus listedStatus,
             Pageable pageable
     );
+
+    /**
+     * LISTED properties ordered for the landing "Top Rated Near You"
+     * carousel: primary sort by avgRating DESC, then ratingCount DESC
+     * as a tiebreaker (a 5.0 with 1 review shouldn't beat a 4.8 with 80),
+     * then createdAt DESC so un-reviewed catalogues at least show the
+     * newest items first.
+     */
+    @Query("""
+            SELECT p FROM Property p
+            WHERE p.status = :listedStatus
+            ORDER BY p.avgRating DESC, p.ratingCount DESC, p.createdAt DESC
+            """)
+    List<Property> findTopRated(
+            @Param("listedStatus") PropertyStatus listedStatus,
+            Pageable pageable
+    );
 }

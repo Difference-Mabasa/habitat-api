@@ -21,6 +21,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -91,6 +92,19 @@ public class Property extends BaseEntity {
 
     @Column(name = "longitude")
     private Double longitude;
+
+    // ── Rating aggregation ───────────────────────────────────────────
+    // Denormalised counters maintained out-of-band when a future review
+    // service lands; surfaced via {@code GET /properties/top-rated} and
+    // included on every PropertySummary so cards can show ★ + count.
+
+    @Column(name = "avg_rating", nullable = false, precision = 3, scale = 2)
+    @Builder.Default
+    private BigDecimal avgRating = BigDecimal.ZERO;
+
+    @Column(name = "rating_count", nullable = false)
+    @Builder.Default
+    private int ratingCount = 0;
 
     // ── Children ─────────────────────────────────────────────────────
     // Cascade ALL so PATCH /properties/{id} can replace photo collections

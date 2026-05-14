@@ -40,7 +40,15 @@ public record PropertySummary(
          * sort by recency (the landing "Just listed" card, for example)
          * can render a relative-time subline without a second fetch.
          */
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        /**
+         * Aggregated rating from reviews (0.00–5.00). Recomputed
+         * out-of-band by a future review service; zero by default for
+         * new / un-reviewed properties.
+         */
+        BigDecimal avgRating,
+        /** Number of reviews backing {@code avgRating}; drives the "(N)" count next to stars. */
+        int ratingCount
 ) {
     public static PropertySummary from(Property p) {
         Unit head = p.getUnits().stream()
@@ -73,7 +81,9 @@ public record PropertySummary(
                 head == null ? null : head.getSqm(),
                 p.getUnits().size(),
                 available,
-                p.getCreatedAt()
+                p.getCreatedAt(),
+                p.getAvgRating(),
+                p.getRatingCount()
         );
     }
 }

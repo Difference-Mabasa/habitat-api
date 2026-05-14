@@ -197,6 +197,12 @@ public class PropertyService {
     /** Floor for the same param — negative / zero get coerced to this. */
     static final int POPULAR_AREAS_MIN_SIZE = 1;
 
+    /** Hard cap on {@code GET /properties/top-rated?size=}. */
+    static final int TOP_RATED_MAX_SIZE = 20;
+
+    /** Floor for the same param — negative / zero get coerced to this. */
+    static final int TOP_RATED_MIN_SIZE = 1;
+
     /**
      * Suburbs with the most LISTED properties, capped at {@code size}.
      * Returns an editorial fallback ({@link LandingContent#EDITORIAL_AREAS}
@@ -215,6 +221,21 @@ public class PropertyService {
                 .limit(safeSize)
                 .map(name -> new PopularAreaResponse(name, 0L))
                 .toList();
+    }
+
+    /**
+     * Top-rated LISTED properties for the landing carousel. Sorts by
+     * {@code avgRating DESC, ratingCount DESC, createdAt DESC} — until
+     * reviews land, the catalogue is all-zeros and the third tiebreaker
+     * makes this effectively "newest LISTED first", which is a sensible
+     * fallback for an unrated catalogue (no fake data, no empty grid).
+     */
+    @Transactional(readOnly = true)
+    public List<PropertySummary> topRated(int size) {
+        int safeSize = Math.min(TOP_RATED_MAX_SIZE, Math.max(TOP_RATED_MIN_SIZE, size));
+        List<Property> top = properties.findTopRated(
+                PropertyStatus.LISTED, PageRequest.of(0, safeSize));
+        return top.stream().map(PropertySummary::from).toList();
     }
 
     @Transactional(readOnly = true)
