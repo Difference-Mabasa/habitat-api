@@ -32,8 +32,15 @@ public record InvoiceResponse(
         OffsetDateTime createdAt,
         ApplicationRef application,
         UnitRef unit,
-        PropertyRef property
+        PropertyRef property,
+        /** Frozen-at-issuance display values — see Lease snapshots (BUG-02). */
+        Snapshots snapshots
 ) {
+    public record Snapshots(
+            String tenantName,
+            String propertyTitle,
+            String propertyAddress
+    ) {}
     public static InvoiceResponse from(Invoice i) {
         // V22: read off the invoice's direct refs — application is a
         // nullable trace pointer only.
@@ -66,6 +73,11 @@ public record InvoiceResponse(
                         property.getSuburb(),
                         property.getCity(),
                         property.getProvince()
+                ),
+                new Snapshots(
+                        i.getTenantNameSnapshot(),
+                        i.getPropertyTitleSnapshot(),
+                        i.getPropertyAddressSnapshot()
                 )
         );
     }

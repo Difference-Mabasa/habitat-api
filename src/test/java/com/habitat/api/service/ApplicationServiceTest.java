@@ -50,7 +50,7 @@ class ApplicationServiceTest {
     @Mock UserRepository users;
     @Mock PropertyRequiredDocumentRepository requiredDocs;
     @Mock ApplicationDocumentRepository appDocs;
-    @Mock com.habitat.api.service.InvoiceService invoiceService;
+    @Mock org.springframework.context.ApplicationEventPublisher events;
     @Mock SecurityUtils security;
     @InjectMocks ApplicationService service;
 
@@ -276,22 +276,31 @@ class ApplicationServiceTest {
     // ── review ────────────────────────────────────────────────────────
 
     @Test
-    void review_approve_issues_invoice_and_transitions_to_INVOICE_SENT() {
+    void review_approve_lands_at_APPROVED_and_publishes_event() {
         UUID managerId = UUID.fromString("88888888-8888-8888-8888-888888888888");
         Application a = applicationWithManager(managerId);
         a.setStatus(ApplicationStatus.DOCUMENTS_SUBMITTED);
         when(security.requireUserId()).thenReturn(managerId);
         when(applications.findById(a.getId())).thenReturn(Optional.of(a));
+        // ARCH-04: ApplicationService snapshots the reviewer's name.
+        when(users.findById(managerId)).thenReturn(Optional.of(
+                a.getUnit().getProperty().getManager()));
 
         var out = service.review(a.getId(),
                 new ReviewApplicationRequest(ReviewApplicationRequest.Action.APPROVE, "Looks great"));
 
-        assertThat(a.getStatus()).isEqualTo(ApplicationStatus.INVOICE_SENT);
+        // ARCH-03: ApplicationService no longer issues the invoice
+        // synchronously — it publishes an event the listener handles.
+        // So at the end of review() the status is APPROVED, not
+        // INVOICE_SENT; INVOICE_SENT lands AFTER_COMMIT in the listener.
+        assertThat(a.getStatus()).isEqualTo(ApplicationStatus.APPROVED);
         assertThat(a.getDecisionNote()).isEqualTo("Looks great");
         assertThat(a.getDecidedBy()).isEqualTo(managerId);
+        assertThat(a.getDecidedByName()).isEqualTo("Test Tester");
         assertThat(a.getDecidedAt()).isNotNull();
-        assertThat(out.status()).isEqualTo(ApplicationStatus.INVOICE_SENT);
-        verify(invoiceService).issueForApprovedApplication(a);
+        assertThat(out.status()).isEqualTo(ApplicationStatus.APPROVED);
+        verify(events).publishEvent(
+                new com.habitat.api.event.ApplicationApprovedEvent(a.getId()));
     }
 
     @Test

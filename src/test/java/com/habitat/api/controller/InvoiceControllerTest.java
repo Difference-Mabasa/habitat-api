@@ -114,7 +114,8 @@ class InvoiceControllerTest {
                         status == InvoiceStatus.PAID ? ApplicationStatus.DEPOSIT_PAID : ApplicationStatus.INVOICE_SENT),
                 new InvoiceResponse.UnitRef(UNIT_ID, "Unit 1", "1",
                         new BigDecimal("5000"), 1, 1, null),
-                new InvoiceResponse.PropertyRef(PROP_ID, "Olive Court", "Sandton", "Joburg", "GP")
+                new InvoiceResponse.PropertyRef(PROP_ID, "Olive Court", "Sandton", "Joburg", "GP"),
+                new InvoiceResponse.Snapshots("Tenant Name", "Olive Court", "Sandton, Joburg")
         );
     }
 }

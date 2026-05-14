@@ -109,7 +109,10 @@ public class Unit extends BaseEntity {
     @Column(name = "available_from")
     private LocalDate availableFrom;
 
-    @OneToMany(mappedBy = "unit", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    // PERSIST + MERGE only — see Property.units rationale (TECH_DEBT.md ARCH-01).
+    @OneToMany(mappedBy = "unit",
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE},
+            fetch = FetchType.LAZY)
     @OrderBy("sortOrder ASC, createdAt ASC")
     @Builder.Default
     private List<UnitImage> images = new ArrayList<>();

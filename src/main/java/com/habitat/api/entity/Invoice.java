@@ -94,4 +94,15 @@ public class Invoice extends BaseEntity {
     /** Reference from the payment gateway — mocked today, real once Ozow lands. */
     @Column(name = "payment_reference", length = 255)
     private String paymentReference;
+
+    // ── BUG-02 snapshots — frozen at issuance, never updated ────────────
+
+    @Column(name = "tenant_name_snapshot", length = 200)
+    private String tenantNameSnapshot;
+
+    @Column(name = "property_title_snapshot", length = 200)
+    private String propertyTitleSnapshot;
+
+    @Column(name = "property_address_snapshot", columnDefinition = "TEXT")
+    private String propertyAddressSnapshot;
 }

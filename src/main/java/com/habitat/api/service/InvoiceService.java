@@ -34,7 +34,7 @@ import java.util.UUID;
 public class InvoiceService {
 
     private final InvoiceRepository invoices;
-    private final LeaseService leaseService;
+    private final org.springframework.context.ApplicationEventPublisher events;
     private final SecurityUtils security;
 
     /** Default validity window for an unpaid invoice — 7 days from issue. */
@@ -56,9 +56,10 @@ public class InvoiceService {
                     BigDecimal deposit = price == null ? BigDecimal.ZERO : price;
                     BigDecimal firstMonth = price == null ? BigDecimal.ZERO : price;
                     BigDecimal total = deposit.add(firstMonth);
+                    var tenant = application.getTenant();
                     Invoice fresh = Invoice.builder()
                             .application(application)
-                            .tenant(application.getTenant())
+                            .tenant(tenant)
                             .landlord(property.getManager())
                             .unit(unit)
                             .property(property)
@@ -69,6 +70,11 @@ public class InvoiceService {
                             .invoiceRef(nextInvoiceRef())
                             .issuedAt(OffsetDateTime.now())
                             .expiresAt(OffsetDateTime.now().plusDays(INVOICE_TTL_DAYS))
+                            // BUG-02: snapshot the displayable identity
+                            // so old invoices stay accurate after edits.
+                            .tenantNameSnapshot(displayName(tenant))
+                            .propertyTitleSnapshot(property.getTitle())
+                            .propertyAddressSnapshot(formatAddress(property))
                             .build();
                     Invoice saved = invoices.save(fresh);
                     log.info("invoice {} issued for application {} (total={})",
@@ -129,17 +135,16 @@ public class InvoiceService {
         // we still record the payment, we just can't advance any
         // downstream state. That's expected for late-paid invoices.
         Application application = invoice.getApplication();
-        if (application != null) {
-            if (application.getStatus() == ApplicationStatus.INVOICE_SENT) {
-                application.setStatus(ApplicationStatus.DEPOSIT_PAID);
-            }
-            // Paying the deposit auto-generates the lease and bumps the
-            // application to LEASE_PENDING_SIGNATURES so the tenant's
-            // sign-lease screen has something to render.
-            if (application.getStatus() == ApplicationStatus.DEPOSIT_PAID) {
-                leaseService.issueForPaidApplication(application);
-            }
+        if (application != null
+                && application.getStatus() == ApplicationStatus.INVOICE_SENT) {
+            com.habitat.api.service.statemachine.ApplicationStateMachine
+                    .transition(application, ApplicationStatus.DEPOSIT_PAID);
         }
+
+        // AFTER_COMMIT event drives lease generation. Decouples
+        // InvoiceService from LeaseService (TECH_DEBT ARCH-03).
+        events.publishEvent(new com.habitat.api.event.InvoicePaidEvent(invoice.getId()));
+
         log.info("invoice {} paid by {} → application status = {}",
                 invoice.getInvoiceRef(), me,
                 application == null ? "(archived)" : application.getStatus());
@@ -150,5 +155,22 @@ public class InvoiceService {
     private static String nextInvoiceRef() {
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
         return "HB-INV-" + suffix;
+    }
+
+    private static String displayName(com.habitat.api.entity.User u) {
+        if (u == null) return null;
+        String first = u.getFirstName() == null ? "" : u.getFirstName();
+        String last = u.getSurname() == null ? "" : u.getSurname();
+        String name = (first + " " + last).trim();
+        return name.isEmpty() ? u.getEmail() : name;
+    }
+
+    private static String formatAddress(com.habitat.api.entity.Property p) {
+        if (p == null) return null;
+        return java.util.stream.Stream.of(
+                        p.getAddressLine(), p.getSuburb(), p.getCity(), p.getPostalCode())
+                .filter(s -> s != null && !s.isBlank())
+                .reduce((a, b) -> a + ", " + b)
+                .orElse(null);
     }
 }

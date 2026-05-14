@@ -121,7 +121,13 @@ class LeaseControllerTest {
                 new LeaseResponse.PartyRef(LL_ID, "Naledi", "Mokoena", "l@example.co.za"),
                 new LeaseResponse.UnitRef(UNIT_ID, "Unit A", "A",
                         new BigDecimal("8500"), 1, 1, null),
-                new LeaseResponse.PropertyRef(PROP_ID, "23 Vilakazi St", "23 Vilakazi", "Orlando West", "Soweto", "GP", "1804")
+                new LeaseResponse.PropertyRef(PROP_ID, "23 Vilakazi St", "23 Vilakazi", "Orlando West", "Soweto", "GP", "1804"),
+                new LeaseResponse.Snapshots(
+                        "Sipho Khumalo",
+                        "Naledi Mokoena",
+                        "Unit A",
+                        "23 Vilakazi St",
+                        "23 Vilakazi, Orlando West, Soweto, 1804")
         );
     }
 }

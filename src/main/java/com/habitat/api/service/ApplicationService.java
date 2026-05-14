@@ -48,7 +48,7 @@ public class ApplicationService {
     private final UserRepository users;
     private final PropertyRequiredDocumentRepository requiredDocs;
     private final ApplicationDocumentRepository appDocs;
-    private final InvoiceService invoiceService;
+    private final org.springframework.context.ApplicationEventPublisher events;
     private final SecurityUtils security;
 
     @Transactional
@@ -158,7 +158,8 @@ public class ApplicationService {
         }
         if (!required.isEmpty() && uploaded.containsAll(required)
                 && application.getStatus() == ApplicationStatus.AWAITING_DOCUMENTS) {
-            application.setStatus(ApplicationStatus.DOCUMENTS_SUBMITTED);
+            com.habitat.api.service.statemachine.ApplicationStateMachine
+                    .transition(application, ApplicationStatus.DOCUMENTS_SUBMITTED);
             log.info("application {} all required docs uploaded — DOCUMENTS_SUBMITTED",
                     applicationId);
         }
@@ -242,20 +243,32 @@ public class ApplicationService {
             case REJECT  -> ApplicationStatus.REJECTED;
             case ON_HOLD -> ApplicationStatus.ON_HOLD;
         };
-        application.setStatus(next);
+        com.habitat.api.service.statemachine.ApplicationStateMachine.transition(application, next);
         application.setDecisionNote(req.note());
         application.setDecidedAt(OffsetDateTime.now());
         application.setDecidedBy(me);
+        // ARCH-04: snapshot the reviewer's display name so the audit
+        // trail survives a later hard-delete of the user account.
+        application.setDecidedByName(users.findById(me)
+                .map(ApplicationService::displayName)
+                .orElse(null));
 
-        // Approvals auto-issue a deposit invoice and bump the
-        // application to INVOICE_SENT so the tenant's pay-deposit
-        // screen has something to render.
+        // Approval fires an AFTER_COMMIT event; the InvoiceIssuanceListener
+        // creates the invoice and bumps the application to INVOICE_SENT.
+        // Decouples ApplicationService from InvoiceService (TECH_DEBT
+        // ARCH-03).
         if (next == ApplicationStatus.APPROVED) {
-            invoiceService.issueForApprovedApplication(application);
-            application.setStatus(ApplicationStatus.INVOICE_SENT);
+            events.publishEvent(new com.habitat.api.event.ApplicationApprovedEvent(applicationId));
         }
 
         log.info("application {} reviewed by {} → {}", applicationId, me, application.getStatus());
         return ApplicationResponse.from(application);
+    }
+
+    private static String displayName(User u) {
+        String first = u.getFirstName() == null ? "" : u.getFirstName();
+        String last  = u.getSurname() == null   ? "" : u.getSurname();
+        String name  = (first + " " + last).trim();
+        return name.isEmpty() ? u.getEmail() : name;
     }
 }

@@ -58,8 +58,9 @@ public class LeaseSignedListener {
 
         // Lifecycle state flips — application + unit.
         var application = lease.getApplication();
-        if (application != null && application.getStatus() != ApplicationStatus.COMPLETED) {
-            application.setStatus(ApplicationStatus.COMPLETED);
+        if (application != null) {
+            com.habitat.api.service.statemachine.ApplicationStateMachine
+                    .transition(application, ApplicationStatus.COMPLETED);
         }
         var unit = lease.getUnit();
         if (unit != null && unit.getStatus() != UnitStatus.OCCUPIED) {

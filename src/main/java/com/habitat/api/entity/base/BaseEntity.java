@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.Version;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -65,6 +66,18 @@ public abstract class BaseEntity {
     @Setter
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
+
+    /**
+     * Optimistic-lock version. Hibernate auto-increments on every write
+     * and throws {@link jakarta.persistence.OptimisticLockException} on
+     * stale updates — addresses {@code BUG-01} in
+     * {@code habitat-api/TECH_DEBT.md}.
+     *
+     * <p>Migration V24 backfills 0 on existing rows.
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     public boolean isDeleted() {
         return deletedAt != null;

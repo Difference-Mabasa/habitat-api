@@ -82,9 +82,17 @@ public class LeaseService {
                             .startDate(start)
                             .status(LeaseStatus.PENDING_SIGNATURES)
                             .leaseRef(nextLeaseRef())
+                            // BUG-02: snapshot the live values so the
+                            // lease stays correct after upstream edits.
+                            .tenantNameSnapshot(displayName(tenant))
+                            .landlordNameSnapshot(displayName(landlord))
+                            .unitTitleSnapshot(unit.getTitle())
+                            .propertyTitleSnapshot(property.getTitle())
+                            .propertyAddressSnapshot(formatAddress(property))
                             .build();
                     Lease saved = leases.save(fresh);
-                    application.setStatus(ApplicationStatus.LEASE_PENDING_SIGNATURES);
+                    com.habitat.api.service.statemachine.ApplicationStateMachine
+                            .transition(application, ApplicationStatus.LEASE_PENDING_SIGNATURES);
                     log.info("lease {} generated for application {} (start={}, monthly={})",
                             saved.getLeaseRef(), application.getId(), start, monthly);
                     return saved;
@@ -200,5 +208,22 @@ public class LeaseService {
     private static String nextLeaseRef() {
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
         return "HB-LSE-" + suffix;
+    }
+
+    private static String displayName(User u) {
+        if (u == null) return null;
+        String first = u.getFirstName() == null ? "" : u.getFirstName();
+        String last = u.getSurname() == null ? "" : u.getSurname();
+        String name = (first + " " + last).trim();
+        return name.isEmpty() ? u.getEmail() : name;
+    }
+
+    private static String formatAddress(Property p) {
+        if (p == null) return null;
+        return java.util.stream.Stream.of(
+                        p.getAddressLine(), p.getSuburb(), p.getCity(), p.getPostalCode())
+                .filter(s -> s != null && !s.isBlank())
+                .reduce((a, b) -> a + ", " + b)
+                .orElse(null);
     }
 }

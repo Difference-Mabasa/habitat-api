@@ -276,6 +276,7 @@ The hardest backroom lessons live here.
 ### Audit & deletion
 
 - **Soft-delete on Application, Booking, Lease, Message, Conversation, Notification.** `deletedAt = now()`, never `repository.delete()`. *Why:* Dispute resolution and GDPR right-to-erasure both need a trail.
+- **Never call `repository.delete()` / `repository.deleteById()` / `entityManager.remove()` on any `BaseEntity`.** Always set `deletedAt`. *Why:* After V22 the durable records (`leases`, `invoices`) reference `users` / `units` / `properties` with `ON DELETE RESTRICT`, so a hard delete will throw a misleading `DataIntegrityViolationException`. The convention also keeps soft-delete the single source of truth — no row vanishes silently.
 - **Notifications expire after 90 days** via a paginated scheduled job (see §10).
 
 ### Slow query detection

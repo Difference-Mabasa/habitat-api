@@ -2,10 +2,12 @@ package com.habitat.api.exception;
 
 import com.habitat.api.dto.ApiError;
 import com.habitat.api.dto.FieldError;
+import jakarta.persistence.OptimisticLockException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -60,6 +62,17 @@ public class GlobalExceptionHandler {
         log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
         return build(HttpStatus.CONFLICT, "CONFLICT",
                 "The resource already exists or violates a constraint.", null);
+    }
+
+    /**
+     * Optimistic-lock collision (V24 + BaseEntity @Version). Returned as
+     * 409 — the caller can re-read and retry. Addresses {@code BUG-01}.
+     */
+    @ExceptionHandler({OptimisticLockException.class, OptimisticLockingFailureException.class})
+    public ResponseEntity<ApiError> handleOptimisticLock(Exception ex) {
+        log.warn("Optimistic lock collision: {}", ex.getMessage());
+        return build(HttpStatus.CONFLICT, "STALE_RESOURCE",
+                "This resource was modified by someone else. Refresh and try again.", null);
     }
 
     @ExceptionHandler(AccessDeniedException.class)

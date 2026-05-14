@@ -77,4 +77,13 @@ public class Application extends BaseEntity {
     /** UUID of the landlord/agent who made the call. Loose reference, no FK enforcement here. */
     @Column(name = "decided_by")
     private UUID decidedBy;
+
+    /**
+     * Display name of the reviewer snapshotted at decision time. Preserves
+     * the audit trail even if the reviewer is later hard-deleted from
+     * {@code users}. Addresses {@code ARCH-04} in
+     * {@code habitat-api/TECH_DEBT.md}.
+     */
+    @Column(name = "decided_by_name", length = 200)
+    private String decidedByName;
 }

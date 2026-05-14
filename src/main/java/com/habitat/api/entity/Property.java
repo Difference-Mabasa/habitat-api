@@ -107,16 +107,24 @@ public class Property extends BaseEntity {
     private int ratingCount = 0;
 
     // ── Children ─────────────────────────────────────────────────────
-    // Cascade ALL so PATCH /properties/{id} can replace photo collections
-    // atomically; the matching DB-level ON DELETE CASCADE in V9 guards
-    // against orphans if something bypasses Hibernate.
+    // Cascade PERSIST + MERGE so PATCH /properties/{id} can replace
+    // collections atomically. Crucially NOT REMOVE / orphanRemoval:
+    // after V22, units are RESTRICT-FK'd from leases + invoices, so a
+    // cascading Hibernate DELETE would crash the moment a leased unit
+    // is removed from the collection. Hard-delete is forbidden anyway
+    // (development-standards.md §"Audit & deletion") — we soft-delete
+    // via deletedAt. Addresses habitat-api/TECH_DEBT.md ARCH-01.
 
-    @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "property",
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE},
+            fetch = FetchType.LAZY)
     @OrderBy("createdAt ASC")
     @Builder.Default
     private List<Unit> units = new ArrayList<>();
 
-    @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "property",
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE},
+            fetch = FetchType.LAZY)
     @OrderBy("sortOrder ASC, createdAt ASC")
     @Builder.Default
     private List<PropertyImage> images = new ArrayList<>();

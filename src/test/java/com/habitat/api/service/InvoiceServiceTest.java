@@ -37,7 +37,7 @@ import static org.mockito.Mockito.when;
 class InvoiceServiceTest {
 
     @Mock InvoiceRepository invoices;
-    @Mock LeaseService leaseService;
+    @Mock org.springframework.context.ApplicationEventPublisher events;
     @Mock SecurityUtils security;
     @InjectMocks InvoiceService service;
 
@@ -139,8 +139,13 @@ class InvoiceServiceTest {
         assertThat(i.getStatus()).isEqualTo(InvoiceStatus.PAID);
         assertThat(i.getPaidAt()).isNotNull();
         assertThat(i.getPaymentReference()).isEqualTo("OZOW-REF-XYZ");
+        // InvoiceService synchronously flips the application status
+        // INVOICE_SENT → DEPOSIT_PAID; the InvoicePaidListener handles
+        // the lease generation AFTER_COMMIT.
         assertThat(app.getStatus()).isEqualTo(ApplicationStatus.DEPOSIT_PAID);
         assertThat(out.status()).isEqualTo(InvoiceStatus.PAID);
+        verify(events).publishEvent(
+                new com.habitat.api.event.InvoicePaidEvent(i.getId()));
     }
 
     @Test

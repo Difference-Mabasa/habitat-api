@@ -39,7 +39,15 @@ public record LeaseResponse(
         PartyRef tenant,
         PartyRef landlord,
         UnitRef unit,
-        PropertyRef property
+        PropertyRef property,
+        /**
+         * Frozen-at-issuance display values. Prefer these over the live
+         * {@code tenant} / {@code landlord} / {@code unit} / {@code property}
+         * refs when rendering the lease document itself — they preserve
+         * the contract as it stood at signing time even if upstream
+         * rows are edited later (BUG-02).
+         */
+        Snapshots snapshots
 ) {
     public static LeaseResponse from(Lease l) {
         var application = l.getApplication();
@@ -64,9 +72,24 @@ public record LeaseResponse(
                 PartyRef.from(l.getTenant()),
                 PartyRef.from(l.getLandlord()),
                 UnitRef.from(l.getUnit()),
-                PropertyRef.from(l.getProperty())
+                PropertyRef.from(l.getProperty()),
+                new Snapshots(
+                        l.getTenantNameSnapshot(),
+                        l.getLandlordNameSnapshot(),
+                        l.getUnitTitleSnapshot(),
+                        l.getPropertyTitleSnapshot(),
+                        l.getPropertyAddressSnapshot()
+                )
         );
     }
+
+    public record Snapshots(
+            String tenantName,
+            String landlordName,
+            String unitTitle,
+            String propertyTitle,
+            String propertyAddress
+    ) {}
 
     public record ApplicationRef(UUID id, ApplicationStatus status) {}
 

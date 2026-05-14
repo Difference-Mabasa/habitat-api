@@ -27,6 +27,8 @@ public final class ErrorMessages {
     public static final String APPLICATION_NOT_FOUND = "Application not found.";
     public static final String APPLICATION_NOT_REVIEWABLE =
             "This application can't be reviewed in its current state.";
+    public static final String APPLICATION_INVALID_TRANSITION =
+            "Illegal application status change.";
     public static final String DOCS_UPLOAD_WRONG_STATUS =
             "Documents can only be uploaded while the application is awaiting them.";
     public static final String INVOICE_NOT_FOUND = "Invoice not found.";

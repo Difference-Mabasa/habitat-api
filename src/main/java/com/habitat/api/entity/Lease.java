@@ -104,4 +104,23 @@ public class Lease extends BaseEntity {
 
     @Column(name = "signed_pdf_url", length = 500)
     private String signedPdfUrl;
+
+    // ── BUG-02 snapshots — frozen at issuance, never updated ────────────
+    // Lets a 2024 lease display 2024-era tenant names + property
+    // addresses even after the upstream rows have been edited.
+
+    @Column(name = "tenant_name_snapshot", length = 200)
+    private String tenantNameSnapshot;
+
+    @Column(name = "landlord_name_snapshot", length = 200)
+    private String landlordNameSnapshot;
+
+    @Column(name = "unit_title_snapshot", length = 200)
+    private String unitTitleSnapshot;
+
+    @Column(name = "property_title_snapshot", length = 200)
+    private String propertyTitleSnapshot;
+
+    @Column(name = "property_address_snapshot", columnDefinition = "TEXT")
+    private String propertyAddressSnapshot;
 }
