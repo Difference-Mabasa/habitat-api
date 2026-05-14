@@ -42,6 +42,9 @@ public final class ApiRoutes {
     public static final String PROPERTIES_TOP_RATED = PROPERTIES + "/top-rated";
     public static final String UNITS = BASE + "/units";
 
+    // Applications
+    public static final String APPLICATIONS = BASE + "/applications";
+
     // Landing-page aggregates (public)
     public static final String LANDING = BASE + "/landing";
     public static final String LANDING_STATS = LANDING + "/stats";

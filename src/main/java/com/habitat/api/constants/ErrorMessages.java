@@ -22,6 +22,13 @@ public final class ErrorMessages {
     public static final String NOTIFICATION_NOT_FOUND = "Notification not found.";
     public static final String PROPERTY_NOT_FOUND = "Property not found.";
     public static final String UNIT_NOT_FOUND = "Unit not found.";
+    public static final String UNIT_NOT_AVAILABLE = "This unit isn't accepting applications right now.";
+    public static final String APPLICATION_ALREADY_SUBMITTED = "You've already applied for this unit.";
+    public static final String APPLICATION_NOT_FOUND = "Application not found.";
+    public static final String APPLICATION_NOT_REVIEWABLE =
+            "This application can't be reviewed in its current state.";
+    public static final String DOCS_UPLOAD_WRONG_STATUS =
+            "Documents can only be uploaded while the application is awaiting them.";
     public static final String SYSTEM_IN_APP_CANNOT_BE_MUTED =
             "Account & security in-app alerts can't be muted.";
 
