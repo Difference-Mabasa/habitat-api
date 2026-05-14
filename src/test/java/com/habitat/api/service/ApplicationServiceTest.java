@@ -50,6 +50,7 @@ class ApplicationServiceTest {
     @Mock UserRepository users;
     @Mock PropertyRequiredDocumentRepository requiredDocs;
     @Mock ApplicationDocumentRepository appDocs;
+    @Mock com.habitat.api.service.InvoiceService invoiceService;
     @Mock SecurityUtils security;
     @InjectMocks ApplicationService service;
 
@@ -275,7 +276,7 @@ class ApplicationServiceTest {
     // ── review ────────────────────────────────────────────────────────
 
     @Test
-    void review_approve_transitions_to_APPROVED_and_records_decision() {
+    void review_approve_issues_invoice_and_transitions_to_INVOICE_SENT() {
         UUID managerId = UUID.fromString("88888888-8888-8888-8888-888888888888");
         Application a = applicationWithManager(managerId);
         a.setStatus(ApplicationStatus.DOCUMENTS_SUBMITTED);
@@ -285,11 +286,12 @@ class ApplicationServiceTest {
         var out = service.review(a.getId(),
                 new ReviewApplicationRequest(ReviewApplicationRequest.Action.APPROVE, "Looks great"));
 
-        assertThat(a.getStatus()).isEqualTo(ApplicationStatus.APPROVED);
+        assertThat(a.getStatus()).isEqualTo(ApplicationStatus.INVOICE_SENT);
         assertThat(a.getDecisionNote()).isEqualTo("Looks great");
         assertThat(a.getDecidedBy()).isEqualTo(managerId);
         assertThat(a.getDecidedAt()).isNotNull();
-        assertThat(out.status()).isEqualTo(ApplicationStatus.APPROVED);
+        assertThat(out.status()).isEqualTo(ApplicationStatus.INVOICE_SENT);
+        verify(invoiceService).issueForApprovedApplication(a);
     }
 
     @Test

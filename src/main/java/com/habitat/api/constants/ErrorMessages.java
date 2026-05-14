@@ -29,6 +29,9 @@ public final class ErrorMessages {
             "This application can't be reviewed in its current state.";
     public static final String DOCS_UPLOAD_WRONG_STATUS =
             "Documents can only be uploaded while the application is awaiting them.";
+    public static final String INVOICE_NOT_FOUND = "Invoice not found.";
+    public static final String INVOICE_NOT_PAYABLE =
+            "This invoice can't be paid in its current state.";
     public static final String SYSTEM_IN_APP_CANNOT_BE_MUTED =
             "Account & security in-app alerts can't be muted.";
 

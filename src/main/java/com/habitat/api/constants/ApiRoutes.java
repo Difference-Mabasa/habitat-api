@@ -45,6 +45,9 @@ public final class ApiRoutes {
     // Applications
     public static final String APPLICATIONS = BASE + "/applications";
 
+    // Invoices
+    public static final String INVOICES = BASE + "/invoices";
+
     // Landing-page aggregates (public)
     public static final String LANDING = BASE + "/landing";
     public static final String LANDING_STATS = LANDING + "/stats";

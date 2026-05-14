@@ -48,6 +48,7 @@ public class ApplicationService {
     private final UserRepository users;
     private final PropertyRequiredDocumentRepository requiredDocs;
     private final ApplicationDocumentRepository appDocs;
+    private final InvoiceService invoiceService;
     private final SecurityUtils security;
 
     @Transactional
@@ -246,7 +247,15 @@ public class ApplicationService {
         application.setDecidedAt(OffsetDateTime.now());
         application.setDecidedBy(me);
 
-        log.info("application {} reviewed by {} → {}", applicationId, me, next);
+        // Approvals auto-issue a deposit invoice and bump the
+        // application to INVOICE_SENT so the tenant's pay-deposit
+        // screen has something to render.
+        if (next == ApplicationStatus.APPROVED) {
+            invoiceService.issueForApprovedApplication(application);
+            application.setStatus(ApplicationStatus.INVOICE_SENT);
+        }
+
+        log.info("application {} reviewed by {} → {}", applicationId, me, application.getStatus());
         return ApplicationResponse.from(application);
     }
 }
