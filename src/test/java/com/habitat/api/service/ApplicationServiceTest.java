@@ -3,7 +3,6 @@ package com.habitat.api.service;
 import com.habitat.api.dto.application.ApplicationResponse;
 import com.habitat.api.dto.application.CreateApplicationRequest;
 import com.habitat.api.dto.application.ReviewApplicationRequest;
-import com.habitat.api.dto.application.UploadDocumentRequest;
 import com.habitat.api.entity.Application;
 import com.habitat.api.entity.ApplicationDocument;
 import com.habitat.api.entity.PropertyRequiredDocument;
@@ -23,12 +22,15 @@ import com.habitat.api.repository.PropertyRequiredDocumentRepository;
 import com.habitat.api.repository.UnitRepository;
 import com.habitat.api.repository.UserRepository;
 import com.habitat.api.security.SecurityUtils;
+import com.habitat.api.storage.StorageService;
+import com.habitat.api.storage.StoredFile;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.lang.reflect.Field;
 import java.time.LocalDate;
@@ -38,6 +40,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -52,6 +55,7 @@ class ApplicationServiceTest {
     @Mock ApplicationDocumentRepository appDocs;
     @Mock org.springframework.context.ApplicationEventPublisher events;
     @Mock SecurityUtils security;
+    @Mock StorageService storage;
     @InjectMocks ApplicationService service;
 
     private static final UUID TENANT_ID   = UUID.fromString("11111111-1111-1111-1111-111111111111");
@@ -164,6 +168,8 @@ class ApplicationServiceTest {
         when(appDocs.findByApplication_IdAndDocType(app.getId(), DocumentType.SA_ID))
                 .thenReturn(Optional.empty());
         when(appDocs.save(any(ApplicationDocument.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(storage.store(any(), any(), any(), anyLong()))
+                .thenReturn(new StoredFile("documents/abc-id-front.jpg", "image/jpeg", 1024L));
         when(requiredDocs.findByProperty_Id(PROPERTY_ID))
                 .thenReturn(java.util.List.of(
                         PropertyRequiredDocument.builder().docType(DocumentType.SA_ID).build()));
@@ -172,10 +178,15 @@ class ApplicationServiceTest {
                         ApplicationDocument.builder().docType(DocumentType.SA_ID).build()));
 
         var out = service.uploadDocument(app.getId(),
-                new UploadDocumentRequest(DocumentType.SA_ID, "id-front.jpg", "/uploads/stub/id-front.jpg"));
+                DocumentType.SA_ID,
+                new MockMultipartFile("file", "id-front.jpg", "image/jpeg", new byte[]{1, 2, 3}));
 
         assertThat(out.docType()).isEqualTo(DocumentType.SA_ID);
         assertThat(out.fileName()).isEqualTo("id-front.jpg");
+        assertThat(out.mimeType()).isEqualTo("image/jpeg");
+        assertThat(out.sizeBytes()).isEqualTo(1024L);
+        assertThat(out.downloadUrl())
+                .isEqualTo("/api/v1/files/documents/" + app.getId() + "/" + out.id());
         // All required types now uploaded — status flips.
         assertThat(app.getStatus()).isEqualTo(ApplicationStatus.DOCUMENTS_SUBMITTED);
     }
@@ -187,6 +198,8 @@ class ApplicationServiceTest {
         when(applications.findById(app.getId())).thenReturn(Optional.of(app));
         when(appDocs.findByApplication_IdAndDocType(any(), any())).thenReturn(Optional.empty());
         when(appDocs.save(any(ApplicationDocument.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(storage.store(any(), any(), any(), anyLong()))
+                .thenReturn(new StoredFile("documents/abc-id.jpg", "image/jpeg", 2048L));
         when(requiredDocs.findByProperty_Id(PROPERTY_ID))
                 .thenReturn(java.util.List.of(
                         PropertyRequiredDocument.builder().docType(DocumentType.SA_ID).build(),
@@ -196,9 +209,38 @@ class ApplicationServiceTest {
                         ApplicationDocument.builder().docType(DocumentType.SA_ID).build()));
 
         service.uploadDocument(app.getId(),
-                new UploadDocumentRequest(DocumentType.SA_ID, "id.jpg", "/uploads/stub/id.jpg"));
+                DocumentType.SA_ID,
+                new MockMultipartFile("file", "id.jpg", "image/jpeg", new byte[]{1, 2, 3}));
 
         assertThat(app.getStatus()).isEqualTo(ApplicationStatus.AWAITING_DOCUMENTS);
+    }
+
+    @Test
+    void uploadDocument_deletes_previous_storage_on_reupload() {
+        Application app = applicationWith(ApplicationStatus.DOCUMENTS_SUBMITTED);
+        ApplicationDocument existing = ApplicationDocument.builder()
+                .application(app)
+                .docType(DocumentType.SA_ID)
+                .fileUrl("documents/old-stored-path.jpg")
+                .fileName("old.jpg")
+                .build();
+        when(security.requireUserId()).thenReturn(TENANT_ID);
+        when(applications.findById(app.getId())).thenReturn(Optional.of(app));
+        when(appDocs.findByApplication_IdAndDocType(app.getId(), DocumentType.SA_ID))
+                .thenReturn(Optional.of(existing));
+        when(appDocs.save(any(ApplicationDocument.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(storage.store(any(), any(), any(), anyLong()))
+                .thenReturn(new StoredFile("documents/new-stored-path.jpg", "image/jpeg", 1L));
+        when(requiredDocs.findByProperty_Id(PROPERTY_ID)).thenReturn(java.util.List.of());
+        when(appDocs.findByApplication_Id(app.getId())).thenReturn(java.util.List.of(existing));
+
+        service.uploadDocument(app.getId(),
+                DocumentType.SA_ID,
+                new MockMultipartFile("file", "new.jpg", "image/jpeg", new byte[]{9}));
+
+        verify(storage).delete("documents/old-stored-path.jpg");
+        assertThat(existing.getFileUrl()).isEqualTo("documents/new-stored-path.jpg");
+        assertThat(existing.isVerified()).isFalse();
     }
 
     // ── listForTenant / listInboundForLandlord / getById ──────────────

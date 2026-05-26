@@ -24,10 +24,16 @@ import java.time.OffsetDateTime;
  * (application, docType) so re-uploading overwrites the row rather than
  * creating duplicates.
  *
- * <p>{@code fileUrl} is a relative path served by the static file
- * handler. Until habitat ships a real StorageService it carries a stub
- * URL plus the original filename — enough for the landlord to see what
- * was claimed without the bytes being available.
+ * <p>Phase 7 made this real: {@code fileUrl} now holds the opaque
+ * storage-relative path produced by
+ * {@link com.habitat.api.storage.StorageService#store}. The tenant
+ * downloads the bytes via the ownership-checked
+ * {@code GET /files/documents/{applicationId}/{docId}} endpoint, never
+ * by hitting the storage path directly.
+ *
+ * <p>{@code mimeType} + {@code sizeBytes} are populated from Tika
+ * magic-byte detection (NOT the spoofable {@code Content-Type} header,
+ * per {@code development-standards.md} §6).
  */
 @Getter
 @Setter
@@ -52,6 +58,12 @@ public class ApplicationDocument extends BaseEntity {
 
     @Column(name = "file_name", nullable = false, length = 255)
     private String fileName;
+
+    @Column(name = "mime_type", length = 127)
+    private String mimeType;
+
+    @Column(name = "size_bytes")
+    private Long sizeBytes;
 
     @Column(name = "uploaded_at", nullable = false)
     @Builder.Default

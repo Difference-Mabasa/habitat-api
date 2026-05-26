@@ -2,10 +2,12 @@ package com.habitat.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.habitat.api.constants.ApiRoutes;
+import com.habitat.api.dto.application.ApplicationDocumentResponse;
 import com.habitat.api.dto.application.ApplicationResponse;
 import com.habitat.api.dto.application.CreateApplicationRequest;
 import com.habitat.api.dto.application.ReviewApplicationRequest;
 import com.habitat.api.enums.ApplicationStatus;
+import com.habitat.api.enums.DocumentType;
 import com.habitat.api.enums.EmploymentStatus;
 import com.habitat.api.security.JwtAuthenticationFilter;
 import com.habitat.api.security.JwtService;
@@ -18,6 +20,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -32,6 +35,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -150,6 +154,44 @@ class ApplicationControllerTest {
         mvc.perform(patch(ApiRoutes.APPLICATIONS + "/" + APP_ID + "/review").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
+                .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    void uploadDocument_accepts_multipart_and_delegates_to_service() throws Exception {
+        UUID docId = UUID.fromString("aaaaaaaa-0000-0000-0000-000000000001");
+        when(applications.uploadDocument(eq(APP_ID), eq(DocumentType.SA_ID), any()))
+                .thenReturn(new ApplicationDocumentResponse(
+                        docId, APP_ID, DocumentType.SA_ID,
+                        "id-front.jpg", "image/jpeg", 1024L,
+                        "/api/v1/files/documents/" + APP_ID + "/" + docId,
+                        OffsetDateTime.now(), false));
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "id-front.jpg", "image/jpeg", new byte[]{1, 2, 3});
+
+        mvc.perform(multipart(ApiRoutes.APPLICATIONS + "/" + APP_ID + "/documents")
+                        .file(file)
+                        .param("docType", "SA_ID")
+                        .with(csrf()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.docType").value("SA_ID"))
+                .andExpect(jsonPath("$.fileName").value("id-front.jpg"))
+                .andExpect(jsonPath("$.mimeType").value("image/jpeg"))
+                .andExpect(jsonPath("$.sizeBytes").value(1024))
+                .andExpect(jsonPath("$.downloadUrl")
+                        .value("/api/v1/files/documents/" + APP_ID + "/" + docId));
+        verify(applications).uploadDocument(eq(APP_ID), eq(DocumentType.SA_ID), any());
+    }
+
+    @Test
+    void uploadDocument_rejects_missing_docType_param() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "id.jpg", "image/jpeg", new byte[]{1, 2, 3});
+
+        mvc.perform(multipart(ApiRoutes.APPLICATIONS + "/" + APP_ID + "/documents")
+                        .file(file)
+                        .with(csrf()))
                 .andExpect(status().is4xxClientError());
     }
 

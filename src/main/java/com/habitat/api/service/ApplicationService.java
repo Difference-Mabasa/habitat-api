@@ -1,12 +1,12 @@
 package com.habitat.api.service;
 
 import com.habitat.api.constants.ErrorMessages;
+import com.habitat.api.constants.StorageConstants;
 import com.habitat.api.dto.application.ApplicationDocumentResponse;
 import com.habitat.api.dto.application.ApplicationResponse;
 import com.habitat.api.dto.application.CreateApplicationRequest;
 import com.habitat.api.dto.application.RequiredDocumentsResponse;
 import com.habitat.api.dto.application.ReviewApplicationRequest;
-import com.habitat.api.dto.application.UploadDocumentRequest;
 import com.habitat.api.entity.Application;
 import com.habitat.api.entity.ApplicationDocument;
 import com.habitat.api.entity.Unit;
@@ -23,10 +23,13 @@ import com.habitat.api.repository.PropertyRequiredDocumentRepository;
 import com.habitat.api.repository.UnitRepository;
 import com.habitat.api.repository.UserRepository;
 import com.habitat.api.security.SecurityUtils;
+import com.habitat.api.storage.StorageService;
+import com.habitat.api.storage.StoredFile;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.OffsetDateTime;
 import java.util.HashSet;
@@ -50,6 +53,7 @@ public class ApplicationService {
     private final ApplicationDocumentRepository appDocs;
     private final org.springframework.context.ApplicationEventPublisher events;
     private final SecurityUtils security;
+    private final StorageService storage;
 
     @Transactional
     public ApplicationResponse create(CreateApplicationRequest req) {
@@ -130,7 +134,9 @@ public class ApplicationService {
      * application auto-transitions to {@code DOCUMENTS_SUBMITTED}.
      */
     @Transactional
-    public ApplicationDocumentResponse uploadDocument(UUID applicationId, UploadDocumentRequest req) {
+    public ApplicationDocumentResponse uploadDocument(UUID applicationId,
+                                                      DocumentType docType,
+                                                      MultipartFile file) {
         UUID me = security.requireUserId();
         Application application = applications.findById(applicationId)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.APPLICATION_NOT_FOUND));
@@ -141,14 +147,32 @@ public class ApplicationService {
             throw new ConflictException(ErrorMessages.DOCS_UPLOAD_WRONG_STATUS);
         }
 
+        // Validate + persist the bytes BEFORE touching the row. If Tika
+        // rejects the upload we never create a row pointing at nothing.
+        StoredFile stored = storage.store(
+                StorageConstants.FOLDER_DOCUMENTS,
+                file,
+                StorageConstants.ALLOWED_DOCUMENT_TYPES,
+                StorageConstants.MAX_DOCUMENT_BYTES);
+
         ApplicationDocument doc = appDocs
-                .findByApplication_IdAndDocType(applicationId, req.docType())
+                .findByApplication_IdAndDocType(applicationId, docType)
                 .orElseGet(() -> ApplicationDocument.builder()
                         .application(application)
-                        .docType(req.docType())
+                        .docType(docType)
                         .build());
-        doc.setFileUrl(req.fileUrl());
-        doc.setFileName(req.fileName());
+
+        // Re-upload: clean up the previous file before swapping pointers.
+        String previousPath = doc.getFileUrl();
+        if (previousPath != null && !previousPath.isBlank()) {
+            storage.delete(previousPath);
+        }
+
+        String originalName = file.getOriginalFilename();
+        doc.setFileUrl(stored.storedPath());
+        doc.setFileName(originalName == null || originalName.isBlank() ? "upload" : originalName);
+        doc.setMimeType(stored.detectedMimeType());
+        doc.setSizeBytes(stored.size());
         doc.setUploadedAt(OffsetDateTime.now());
         doc.setVerified(false); // re-uploads reset verified
         ApplicationDocument saved = appDocs.save(doc);

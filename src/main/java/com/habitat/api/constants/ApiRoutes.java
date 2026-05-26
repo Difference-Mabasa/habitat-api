@@ -51,6 +51,9 @@ public final class ApiRoutes {
     // Leases
     public static final String LEASES = BASE + "/leases";
 
+    // Files (ownership-checked download paths — Phase 7)
+    public static final String FILES = BASE + "/files";
+
     // Landing-page aggregates (public)
     public static final String LANDING = BASE + "/landing";
     public static final String LANDING_STATS = LANDING + "/stats";

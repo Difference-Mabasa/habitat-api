@@ -10,11 +10,17 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.time.OffsetDateTime;
@@ -73,6 +79,26 @@ public class GlobalExceptionHandler {
         log.warn("Optimistic lock collision: {}", ex.getMessage());
         return build(HttpStatus.CONFLICT, "STALE_RESOURCE",
                 "This resource was modified by someone else. Refresh and try again.", null);
+    }
+
+    /**
+     * Bad client requests Spring's web layer surfaces before our
+     * controllers see them — missing query params, type mismatches,
+     * malformed JSON, oversize multipart bodies. All become 400 with
+     * the {@code BAD_REQUEST} code.
+     */
+    @ExceptionHandler({
+            MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class,
+            ServletRequestBindingException.class,
+            HttpMessageNotReadableException.class,
+            HttpMediaTypeNotSupportedException.class,
+            MultipartException.class
+    })
+    public ResponseEntity<ApiError> handleBindingError(Exception ex) {
+        log.warn("Binding error: {}", ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, "BAD_REQUEST",
+                ex.getMessage() == null ? "Malformed request." : ex.getMessage(), null);
     }
 
     @ExceptionHandler(AccessDeniedException.class)

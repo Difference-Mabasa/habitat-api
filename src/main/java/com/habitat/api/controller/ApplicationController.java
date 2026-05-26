@@ -6,19 +6,23 @@ import com.habitat.api.dto.application.ApplicationResponse;
 import com.habitat.api.dto.application.CreateApplicationRequest;
 import com.habitat.api.dto.application.RequiredDocumentsResponse;
 import com.habitat.api.dto.application.ReviewApplicationRequest;
-import com.habitat.api.dto.application.UploadDocumentRequest;
+import com.habitat.api.enums.DocumentType;
 import com.habitat.api.service.ApplicationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -75,13 +79,19 @@ public class ApplicationController {
         return applications.listRequiredDocuments(id);
     }
 
-    /** Record a single uploaded document. */
-    @PostMapping("/{id}/documents")
+    /**
+     * Multipart upload — the tenant POSTs the binary file plus the
+     * doc-type discriminator. Tika magic-byte detection + the
+     * StorageService size cap run before any DB row is written, so a
+     * rejected upload never leaves a phantom document record behind.
+     */
+    @PostMapping(value = "/{id}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ApplicationDocumentResponse uploadDocument(
             @PathVariable UUID id,
-            @Valid @RequestBody UploadDocumentRequest req
+            @RequestParam("docType") DocumentType docType,
+            @RequestPart("file") MultipartFile file
     ) {
-        return applications.uploadDocument(id, req);
+        return applications.uploadDocument(id, docType, file);
     }
 }

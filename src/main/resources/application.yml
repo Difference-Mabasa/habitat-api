@@ -29,6 +29,15 @@ spring:
       password: ${REDIS_PASSWORD:}
   cache:
     type: redis
+  servlet:
+    multipart:
+      enabled: true
+      # 12 MB matches StorageConstants.MAX_DOCUMENT_BYTES — keep these in
+      # sync. Spring's resolver rejects the request before our service
+      # sees it; the service-layer cap is defence-in-depth.
+      max-file-size: 12MB
+      max-request-size: 13MB
+      file-size-threshold: 1MB
 
 server:
   port: ${PORT:8080}
