@@ -13,7 +13,7 @@ public record UnitImageResponse(
     public static UnitImageResponse from(UnitImage img) {
         return new UnitImageResponse(
                 img.getId(),
-                img.getUrl(),
+                PropertyImageResponse.toPublicUrl(img.getUrl()),
                 Boolean.TRUE.equals(img.getIsCover()),
                 img.getSortOrder() == null ? 0 : img.getSortOrder()
         );

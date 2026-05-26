@@ -11,6 +11,7 @@ import com.habitat.api.security.JwtAuthenticationFilter;
 import com.habitat.api.security.JwtService;
 import com.habitat.api.security.SecurityUtils;
 import com.habitat.api.service.TokenBlocklistService;
+import com.habitat.api.service.UnitImageService;
 import com.habitat.api.service.UnitService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,7 @@ class UnitControllerTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @MockBean UnitService units;
+    @MockBean UnitImageService unitImages;
     @MockBean SecurityUtils security;
     @MockBean JwtService jwtService;
     @MockBean TokenBlocklistService blocklist;
