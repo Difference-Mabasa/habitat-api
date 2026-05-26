@@ -46,6 +46,9 @@ public final class ApiRoutes {
     // Applications
     public static final String APPLICATIONS = BASE + "/applications";
 
+    // Amenities (public catalogue)
+    public static final String AMENITIES = BASE + "/amenities";
+
     // Invoices
     public static final String INVOICES = BASE + "/invoices";
 

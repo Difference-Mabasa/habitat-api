@@ -9,6 +9,8 @@ import com.habitat.api.dto.property.PopularAreaResponse;
 import com.habitat.api.dto.property.PropertyDetailResponse;
 import com.habitat.api.dto.property.PropertyImageResponse;
 import com.habitat.api.dto.property.PropertySummary;
+import com.habitat.api.dto.property.AmenityResponse;
+import com.habitat.api.dto.property.SetAmenitiesRequest;
 import com.habitat.api.dto.property.SetRequiredDocumentsRequest;
 import com.habitat.api.dto.property.SetRequiredDocumentsResponse;
 import com.habitat.api.dto.property.UnitResponse;
@@ -142,6 +144,18 @@ public class PropertyController {
     ) {
         return new SetRequiredDocumentsResponse(
                 properties.setRequiredDocuments(id, req.docTypes()));
+    }
+
+    /**
+     * Replace the amenities the property carries. Empty list clears
+     * the set. Unknown amenity ids 400 the whole request.
+     */
+    @PutMapping("/{id}/amenities")
+    public List<AmenityResponse> setAmenities(
+            @PathVariable UUID id,
+            @Valid @RequestBody SetAmenitiesRequest req
+    ) {
+        return properties.setAmenities(id, req.amenityIds());
     }
 
     /**

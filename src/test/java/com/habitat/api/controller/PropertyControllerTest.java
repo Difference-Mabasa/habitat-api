@@ -265,7 +265,8 @@ class PropertyControllerTest {
                 List.of(), List.of(), OffsetDateTime.now(),
                 new BigDecimal("4.50"), 12,
                 com.habitat.api.enums.ListingMode.LANDLORD_DIRECT,
-                null
+                null,
+                List.of()
         );
     }
 

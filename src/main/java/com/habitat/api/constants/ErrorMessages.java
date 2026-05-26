@@ -27,6 +27,8 @@ public final class ErrorMessages {
             "Agent-managed listings must include a mandate fee.";
     public static final String MANDATE_FEE_DISALLOWED =
             "Landlord-direct listings can't carry a mandate fee.";
+    public static final String UNKNOWN_AMENITY =
+            "One or more selected amenities aren't in the catalogue.";
     public static final String UNIT_NOT_FOUND = "Unit not found.";
     public static final String UNIT_NOT_AVAILABLE = "This unit isn't accepting applications right now.";
     public static final String APPLICATION_ALREADY_SUBMITTED = "You've already applied for this unit.";

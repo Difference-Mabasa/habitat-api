@@ -16,6 +16,7 @@ public final class PublicEndpoints {
             ApiRoutes.HEALTH,
             ApiRoutes.LANDING_STATS,
             ApiRoutes.LANDING_CITIES,
+            ApiRoutes.AMENITIES,
             ApiRoutes.FILES_IMAGES + "/**",  // public property + unit photos
             ApiRoutes.DOCS,
             ApiRoutes.DOCS_API,

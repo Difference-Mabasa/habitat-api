@@ -42,7 +42,9 @@ public record PropertyDetailResponse(
         /** Wizard "Mandate" step: who controls the listing. */
         ListingMode listingMode,
         /** Wizard "Mandate" step: agent fee percent. Null for LANDLORD_DIRECT. */
-        BigDecimal mandateFeePercent
+        BigDecimal mandateFeePercent,
+        /** Property-level amenities (WiFi / Parking / Garden …). */
+        List<AmenityResponse> amenities
 ) {
     public static PropertyDetailResponse from(Property p) {
         return new PropertyDetailResponse(
@@ -67,7 +69,13 @@ public record PropertyDetailResponse(
                 p.getAvgRating(),
                 p.getRatingCount(),
                 p.getListingMode(),
-                p.getMandateFeePercent()
+                p.getMandateFeePercent(),
+                p.getAmenities().stream()
+                        .sorted(java.util.Comparator
+                                .comparingInt(com.habitat.api.entity.Amenity::getSortOrder)
+                                .thenComparing(com.habitat.api.entity.Amenity::getName))
+                        .map(AmenityResponse::from)
+                        .toList()
         );
     }
 }

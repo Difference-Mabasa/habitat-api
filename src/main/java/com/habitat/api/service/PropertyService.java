@@ -10,6 +10,7 @@ import com.habitat.api.dto.property.PropertyDetailResponse;
 import com.habitat.api.dto.property.PropertySummary;
 import com.habitat.api.dto.property.UnitResponse;
 import com.habitat.api.dto.property.UpdatePropertyRequest;
+import com.habitat.api.entity.Amenity;
 import com.habitat.api.entity.Property;
 import com.habitat.api.entity.PropertyRequiredDocument;
 import com.habitat.api.entity.Unit;
@@ -20,9 +21,11 @@ import com.habitat.api.enums.PaymentFrequency;
 import com.habitat.api.enums.PropertyStatus;
 import com.habitat.api.enums.UnitStatus;
 import com.habitat.api.enums.UnitType;
+import com.habitat.api.exception.BadRequestException;
 import com.habitat.api.exception.ConflictException;
 import com.habitat.api.exception.ForbiddenException;
 import com.habitat.api.exception.ResourceNotFoundException;
+import com.habitat.api.repository.AmenityRepository;
 import com.habitat.api.repository.PropertyRepository;
 import com.habitat.api.repository.PropertyRequiredDocumentRepository;
 import com.habitat.api.repository.UnitRepository;
@@ -62,6 +65,7 @@ public class PropertyService {
     private final UnitRepository units;
     private final UserRepository users;
     private final PropertyRequiredDocumentRepository requiredDocs;
+    private final AmenityRepository amenities;
     private final SecurityUtils security;
 
     public enum SortKey {
@@ -375,6 +379,32 @@ public class PropertyService {
         log.info("property {} required-docs set to {} by user {}",
                 propertyId, desired, security.requireUserId());
         return new java.util.ArrayList<>(desired);
+    }
+
+    /**
+     * Replace the amenity set on a property. Full-list replace,
+     * idempotent. Rejects ids that aren't in the seeded amenities
+     * catalogue rather than silently dropping them.
+     */
+    @Transactional
+    public java.util.List<com.habitat.api.dto.property.AmenityResponse> setAmenities(
+            UUID propertyId, java.util.List<UUID> amenityIds) {
+        Property p = findOrThrow(propertyId);
+        requireCanEdit(p);
+        java.util.List<UUID> ids = amenityIds == null ? java.util.List.of() : amenityIds;
+        java.util.List<Amenity> resolved = ids.isEmpty()
+                ? java.util.List.of()
+                : amenities.findAllByIdIn(ids);
+        if (resolved.size() != new java.util.HashSet<>(ids).size()) {
+            throw new BadRequestException(ErrorMessages.UNKNOWN_AMENITY);
+        }
+        p.getAmenities().clear();
+        p.getAmenities().addAll(resolved);
+        log.info("property {} amenities set to {} by user {}",
+                propertyId, ids, security.requireUserId());
+        return resolved.stream()
+                .map(com.habitat.api.dto.property.AmenityResponse::from)
+                .toList();
     }
 
     /** Caller's managed properties (any status), newest first. */

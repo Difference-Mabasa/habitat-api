@@ -11,6 +11,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
@@ -24,7 +26,9 @@ import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A real-estate listing — the building, complex, or stand. Rentable space
@@ -144,4 +148,16 @@ public class Property extends BaseEntity {
     @OrderBy("sortOrder ASC, createdAt ASC")
     @Builder.Default
     private List<PropertyImage> images = new ArrayList<>();
+
+    /**
+     * Property-level amenities (WiFi / Parking / Garden …). LinkedHashSet
+     * preserves a stable iteration order across renders.
+     */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "property_amenities",
+            joinColumns = @JoinColumn(name = "property_id"),
+            inverseJoinColumns = @JoinColumn(name = "amenity_id"))
+    @Builder.Default
+    private Set<Amenity> amenities = new LinkedHashSet<>();
 }
