@@ -40,6 +40,8 @@ public final class ErrorMessages {
             "The mandate PDF hasn't been generated yet.";
     public static final String MANDATE_SIGNED_NOT_AVAILABLE =
             "No signed mandate has been uploaded yet.";
+    public static final String LANDLORD_EMAIL_NOT_ON_HABITAT =
+            "That email isn't registered on Habitat. Switch off \"Landlord is on Habitat\" to use the offline-sign flow, or ask the landlord to register first.";
     public static final String UNIT_NOT_FOUND = "Unit not found.";
     public static final String UNIT_NOT_AVAILABLE = "This unit isn't accepting applications right now.";
     public static final String APPLICATION_ALREADY_SUBMITTED = "You've already applied for this unit.";

@@ -96,18 +96,26 @@ public class MandateService {
         User agent = users.findById(agentId)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.USER_NOT_FOUND));
 
-        // Resolve online landlord by email if it matches a Habitat user.
-        User landlordUser = req.landlordEmail() == null
-                ? null
-                : users.findByEmailIgnoreCase(req.landlordEmail()).orElse(null);
-        boolean online = landlordUser != null;
+        // Flow discriminator: a landlordName means the wizard's
+        // "Landlord is on Habitat" toggle was OFF (offline flow). The
+        // online flow expects the email to resolve to an existing
+        // Habitat user — anything else is a hard error so the agent
+        // can correct the email before publishing rather than silently
+        // falling back to the offline flow with the wrong name.
+        final boolean offlineFlow =
+                req.landlordName() != null && !req.landlordName().isBlank();
 
-        if (!online) {
-            if (req.landlordName() == null || req.landlordName().isBlank()
-                    || req.landlordEmail() == null || req.landlordEmail().isBlank()) {
-                throw new BadRequestException(ErrorMessages.MANDATE_LANDLORD_REQUIRED);
-            }
+        if (req.landlordEmail() == null || req.landlordEmail().isBlank()) {
+            throw new BadRequestException(ErrorMessages.MANDATE_LANDLORD_REQUIRED);
         }
+
+        User landlordUser = null;
+        if (!offlineFlow) {
+            landlordUser = users.findByEmailIgnoreCase(req.landlordEmail())
+                    .orElseThrow(() -> new BadRequestException(
+                            ErrorMessages.LANDLORD_EMAIL_NOT_ON_HABITAT));
+        }
+        final boolean online = !offlineFlow;
 
         Mandate mandate = Mandate.builder()
                 .property(p)
