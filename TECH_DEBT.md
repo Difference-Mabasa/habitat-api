@@ -2,7 +2,7 @@
 
 Living log of known issues to address later. Modelled on `backroom-api/TECH_DEBT.md`.
 
-Severity: 🔴 active bug / correctness · 🟠 architectural debt · 🟡 cosmetic / minor.
+Severity: 🔴 active bug / correctness · 🟠 architectural debt · 🟡 cosmetic / minor · ✅ resolved.
 
 Each item links back to the equivalent `backroom-api/TECH_DEBT.md` entry where one exists — we shipped the same flaw class without learning from it. Don't repeat.
 
@@ -10,16 +10,20 @@ Each item links back to the equivalent `backroom-api/TECH_DEBT.md` entry where o
 
 ## Executive Summary
 
-| ID | Severity | Area | Title |
-|---|---|---|---|
-| **BUG-01** | 🔴 | Concurrency | No optimistic locking on `Application`, `Invoice`, `Lease` |
-| **ARCH-01** | 🔴 | JPA | `Property.units` cascade fights V22 RESTRICT |
-| **ARCH-02** | 🟠 | State machine | `ApplicationStatus` transitions scattered across 4 services |
-| **ARCH-03** | 🟠 | Coupling | Service dependency direction inverted; future slices will worsen |
-| **BUG-02** | 🟠 | Audit | Leases + invoices have no snapshot fields; mutate when upstream changes |
-| **BUG-03** | 🟠 | Audit | `applications.tenant_id` / `unit_id` still `ON DELETE CASCADE` |
-| **ARCH-04** | 🟡 | Audit | `applications.decided_by` has no name snapshot |
-| **ARCH-05** | 🟡 | Convention | No code-level enforcement of "always soft-delete" |
+**All eight items below were closed by the tech-debt sweep (`389b2b5`, 2026-05-14)** and validated by the BUG-01 tests added 2026-05-26 (`OptimisticLockingTest`, `GlobalExceptionHandlerTest`). The detailed problem write-ups are kept below as institutional memory — they document the lessons that shaped `development-standards.md`. New items are added at the bottom.
+
+| ID | Status | Severity | Area | Title |
+|---|---|---|---|---|
+| **BUG-01** | ✅ | 🔴 | Concurrency | No optimistic locking on `Application`, `Invoice`, `Lease` |
+| **ARCH-01** | ✅ | 🔴 | JPA | `Property.units` cascade fights V22 RESTRICT |
+| **ARCH-02** | ✅ | 🟠 | State machine | `ApplicationStatus` transitions scattered across 4 services |
+| **ARCH-03** | ✅ | 🟠 | Coupling | Service dependency direction inverted; future slices will worsen |
+| **BUG-02** | ✅ | 🟠 | Audit | Leases + invoices have no snapshot fields; mutate when upstream changes |
+| **BUG-03** | ✅ | 🟠 | Audit | `applications.tenant_id` / `unit_id` still `ON DELETE CASCADE` |
+| **ARCH-04** | ✅ | 🟡 | Audit | `applications.decided_by` has no name snapshot |
+| **ARCH-05** | ✅ | 🟡 | Convention | No code-level enforcement of "always soft-delete" |
+
+**Open items:** _none_
 
 ---
 

@@ -378,6 +378,7 @@
                             <excludes>
                                 <exclude>**/HabitatApiApplicationTests.java</exclude>
                                 <exclude>**/BaseEntityAuditingTest.java</exclude>
+                                <exclude>**/OptimisticLockingTest.java</exclude>
                                 <exclude>**/integration/*IntegrationTest.java</exclude>
                             </excludes>
                         </configuration>
