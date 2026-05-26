@@ -42,12 +42,11 @@
     </Match>
 
     <!--
-        VA_FORMAT_STRING_USES_NEWLINE: LeasePdfService.buildHtml uses a Java
-        text block to lay out the HTML lease template legibly. The embedded
-        '\n' newlines exist only in the source; the rendered PDF is laid out
-        by openhtmltopdf from the HTML structure, not from those newlines.
-        Suppressing the warning is correct — replacing them with %n would
-        introduce platform-dependent output for no benefit.
+        VA_FORMAT_STRING_USES_NEWLINE was on the old inline LeasePdfService
+        text block. The current LeasePdfService uses external resource
+        templates via PdfTemplateService — placeholders are substituted,
+        no Formatter is invoked. Suppression kept for historical context;
+        safe to remove once the migration is reviewed.
     -->
     <Match>
         <Bug pattern="VA_FORMAT_STRING_USES_NEWLINE"/>

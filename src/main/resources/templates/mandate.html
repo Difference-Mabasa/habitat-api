@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/>
+<style>
+  @page { size: A4; margin: 0; }
+  body { font-family: 'Helvetica', sans-serif; font-size: 11pt; color: #1E0F06; line-height: 1.55; margin: 0; }
+  .page { position: relative; min-height: 297mm; padding: 28mm 24mm 24mm; box-sizing: border-box; }
+  .doc-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 6mm; border-bottom: 2px solid #1E0F06; }
+  .brand { font-family: 'Helvetica', sans-serif; font-weight: 700; font-size: 14pt; letter-spacing: 0.5px; }
+  .brand .accent { color: #E97A1F; }
+  .doc-meta { text-align: right; font-size: 8pt; color: #6b6b6b; line-height: 1.6; }
+  .doc-meta .ref { font-family: 'Courier', monospace; font-weight: 700; font-size: 9pt; color: #1E0F06; }
+  .title-block { margin-top: 14mm; }
+  .eyebrow { font-size: 8pt; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #6b6b6b; }
+  h1.display { font-size: 32pt; font-weight: 700; letter-spacing: -0.5px; margin: 3mm 0 2mm; text-transform: uppercase; color: #1E0F06; }
+  .subtitle { font-size: 10pt; color: #6b6b6b; margin: 0; }
+  .section { margin-top: 10mm; }
+  .section h2 { font-size: 9pt; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #6b6b6b; margin: 0 0 3mm 0; }
+  .kv { display: table; width: 100%; border-collapse: collapse; }
+  .kv .row { display: table-row; }
+  .kv .row .k, .kv .row .v { display: table-cell; padding: 2mm 0; border-bottom: 1px dotted #d0c8c4; vertical-align: top; font-size: 10pt; }
+  .kv .row .k { width: 38%; color: #6b6b6b; font-weight: 500; }
+  .kv .row .v { font-weight: 500; }
+  .mono { font-family: 'Courier', monospace; }
+  .body-copy { font-size: 10pt; line-height: 1.65; margin-top: 3mm; }
+  .body-copy p { margin: 0 0 3mm 0; }
+  .signatures { display: table; width: 100%; margin-top: 14mm; }
+  .signatures .col { display: table-cell; width: 50%; padding-right: 6mm; vertical-align: top; }
+  .signatures .col:last-child { padding-right: 0; padding-left: 6mm; }
+  .signatures .line { border-bottom: 1px solid #1E0F06; height: 12mm; }
+  .signatures .label { font-size: 8pt; color: #6b6b6b; margin-top: 2mm; }
+  .watermark { position: absolute; top: 110mm; left: 0; right: 0; text-align: center; font-weight: 700; font-size: 88pt; letter-spacing: 6px; color: rgba(233, 122, 31, 0.07); }
+  .doc-footer { position: absolute; left: 24mm; right: 24mm; bottom: 12mm; display: flex; justify-content: space-between; font-size: 7.5pt; color: #6b6b6b; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="watermark">MANDATE</div>
+
+  <div class="doc-header">
+    <div class="brand"><span>HABI</span><span class="accent">TAT</span></div>
+    <div class="doc-meta">
+      <div class="ref">MANDATE {{mandateRef}}</div>
+      <div>Generated {{generatedOn}}</div>
+      <div>POPIA-compliant electronic instrument</div>
+    </div>
+  </div>
+
+  <div class="title-block">
+    <div class="eyebrow">Property Management Mandate</div>
+    <h1 class="display">Mandate Agreement</h1>
+    <p class="subtitle">Made under the Property Practitioners Act 22 of 2019, and PPRA rules.</p>
+  </div>
+
+  <div class="section">
+    <h2>1. Parties</h2>
+    <div class="kv">
+      <div class="row"><div class="k">Landlord</div><div class="v">{{landlordName}}</div></div>
+      <div class="row"><div class="k">Landlord email</div><div class="v">{{landlordEmail}}</div></div>
+      <div class="row"><div class="k">Agent</div><div class="v">{{agentName}}</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>2. Property</h2>
+    <div class="kv">
+      <div class="row"><div class="k">Property</div><div class="v">{{propertyTitle}}</div></div>
+      <div class="row"><div class="k">Address</div><div class="v">{{propertyAddress}}</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>3. Scope &amp; fee</h2>
+    <div class="kv">
+      <div class="row"><div class="k">Mandate type</div><div class="v">{{mandateTypeLabel}}</div></div>
+      <div class="row"><div class="k">Agent fee</div><div class="v mono">{{feeLabel}}</div></div>
+      <div class="row"><div class="k">Issued</div><div class="v">{{generatedOn}}</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>4. Terms</h2>
+    <div class="body-copy">
+      <p>The Landlord hereby grants the Agent an exclusive mandate to act on their behalf in the
+        letting and management of the Property described above, in line with the elected mandate
+        type. The Agent will source and screen tenants, manage applications, collect rent into
+        Habitat's trust account, and account to the Landlord in accordance with PPRA rules.</p>
+      <p>The Agent's fee, set out in section 3, is calculated on rent collected and deducted
+        before payout. Either party may terminate this mandate on 30 days' written notice;
+        active leases survive termination and continue to be managed until renewal.</p>
+      <p>Both parties confirm they have read and understood this agreement and agree to be bound
+        by it. Where this mandate is signed offline, the Landlord's signature below is the
+        binding instrument; the Agent attests on the platform that they hold the signed
+        original.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>5. Signatures</h2>
+    <div class="signatures">
+      <div class="col">
+        <div class="line"></div>
+        <div class="label"><strong>Landlord — {{landlordName}}</strong></div>
+        <div class="label mono">Date: ____________________</div>
+      </div>
+      <div class="col">
+        <div class="line"></div>
+        <div class="label"><strong>Agent — {{agentName}}</strong></div>
+        <div class="label mono">Date: ____________________</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <span>Habitat SA (Pty) Ltd · habitat.co.za</span>
+    <span class="mono">{{mandateRef}}</span>
+  </div>
+</div>
+</body>
+</html>

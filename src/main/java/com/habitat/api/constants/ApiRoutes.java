@@ -49,6 +49,9 @@ public final class ApiRoutes {
     // Amenities (public catalogue)
     public static final String AMENITIES = BASE + "/amenities";
 
+    // Mandates are scoped to a property — paths constructed at the
+    // controller as `/properties/{id}/mandate/...`.
+
     // Invoices
     public static final String INVOICES = BASE + "/invoices";
 

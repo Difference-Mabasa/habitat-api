@@ -29,6 +29,17 @@ public final class ErrorMessages {
             "Landlord-direct listings can't carry a mandate fee.";
     public static final String UNKNOWN_AMENITY =
             "One or more selected amenities aren't in the catalogue.";
+    public static final String MANDATE_NOT_FOUND = "Mandate not found.";
+    public static final String MANDATE_REQUIRES_AGENT_MODE =
+            "Mandates only apply to agent-managed listings.";
+    public static final String MANDATE_LANDLORD_REQUIRED =
+            "Offline-flow mandates need at least a landlord name and email.";
+    public static final String MANDATE_NOT_READY_FOR_UPLOAD =
+            "A signed mandate can only be uploaded after issue.";
+    public static final String MANDATE_PDF_NOT_READY =
+            "The mandate PDF hasn't been generated yet.";
+    public static final String MANDATE_SIGNED_NOT_AVAILABLE =
+            "No signed mandate has been uploaded yet.";
     public static final String UNIT_NOT_FOUND = "Unit not found.";
     public static final String UNIT_NOT_AVAILABLE = "This unit isn't accepting applications right now.";
     public static final String APPLICATION_ALREADY_SUBMITTED = "You've already applied for this unit.";

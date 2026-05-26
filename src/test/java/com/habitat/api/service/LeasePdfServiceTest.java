@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class LeasePdfServiceTest {
 
-    private final LeasePdfService service = new LeasePdfService();
+    private final LeasePdfService service = new LeasePdfService(new PdfTemplateService());
 
     @Test
     void render_produces_pdf_bytes_starting_with_the_pdf_magic_header() {

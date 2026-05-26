@@ -58,6 +58,8 @@ class PropertyServiceTest {
     @Mock PropertyRepository properties;
     @Mock UnitRepository units;
     @Mock UserRepository users;
+    @Mock com.habitat.api.repository.PropertyRequiredDocumentRepository requiredDocs;
+    @Mock com.habitat.api.repository.AmenityRepository amenities;
     @Mock SecurityUtils security;
     @InjectMocks PropertyService service;
 
