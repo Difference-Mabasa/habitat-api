@@ -155,6 +155,17 @@
             <version>${tika.version}</version>
         </dependency>
 
+        <!-- ===== PDF GENERATION — openhtmltopdf renders well-formed XHTML to PDF ===== -->
+        <!-- Phase 6: signed lease PDFs. No Thymeleaf — the lease template is
+             small enough to build inline with String.format, which keeps the
+             dependency footprint tight. Replace with Thymeleaf when we have
+             >1 PDF template. -->
+        <dependency>
+            <groupId>com.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-pdfbox</artifactId>
+            <version>1.0.10</version>
+        </dependency>
+
         <!-- ===== OBSERVABILITY ===== -->
         <dependency>
             <groupId>io.micrometer</groupId>

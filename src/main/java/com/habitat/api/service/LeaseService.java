@@ -1,7 +1,9 @@
 package com.habitat.api.service;
 
 import com.habitat.api.constants.ErrorMessages;
+import com.habitat.api.constants.StorageConstants;
 import com.habitat.api.dto.lease.DeclineLeaseRequest;
+import com.habitat.api.dto.lease.IssueOtpResponse;
 import com.habitat.api.dto.lease.LeaseResponse;
 import com.habitat.api.dto.lease.SignLeaseRequest;
 import com.habitat.api.entity.Application;
@@ -13,11 +15,15 @@ import com.habitat.api.enums.ApplicationStatus;
 import com.habitat.api.enums.LeaseStatus;
 import com.habitat.api.enums.LeaseTemplate;
 import com.habitat.api.event.LeaseSignedEvent;
+import com.habitat.api.exception.BadRequestException;
 import com.habitat.api.exception.ConflictException;
 import com.habitat.api.exception.ForbiddenException;
 import com.habitat.api.exception.ResourceNotFoundException;
 import com.habitat.api.repository.LeaseRepository;
 import com.habitat.api.security.SecurityUtils;
+import com.habitat.api.storage.StorageService;
+import com.habitat.api.storage.StoredFile;
+import com.habitat.api.storage.StoredResource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -45,9 +51,14 @@ import java.util.UUID;
 @Slf4j
 public class LeaseService {
 
+    private static final String OTP_PURPOSE_LEASE_SIGN = "lease-sign";
+
     private final LeaseRepository leases;
     private final ApplicationEventPublisher events;
     private final SecurityUtils security;
+    private final OtpService otp;
+    private final LeasePdfService leasePdf;
+    private final StorageService storage;
 
     /**
      * Idempotently issue a lease for an application whose deposit has
@@ -128,13 +139,37 @@ public class LeaseService {
     }
 
     /**
+     * Issue a fresh sign OTP for the caller against this lease. The
+     * code lives in Redis with a 5-minute TTL; any prior code for the
+     * same (user, lease-sign) pair is overwritten. Returned inline as
+     * {@code devCode} until email delivery (Phase 8) is wired.
+     */
+    @Transactional(readOnly = true)
+    public IssueOtpResponse issueSignOtp(UUID leaseId) {
+        UUID me = security.requireUserId();
+        Lease lease = leases.findById(leaseId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.LEASE_NOT_FOUND));
+        requirePartyOrThrow(lease, me);
+        if (lease.getStatus() != LeaseStatus.PENDING_SIGNATURES) {
+            throw new ConflictException(ErrorMessages.LEASE_NOT_SIGNABLE);
+        }
+        String code = otp.issue(otpSubject(me, leaseId), OTP_PURPOSE_LEASE_SIGN);
+        log.info("issued lease-sign OTP for user {} on lease {}", me, lease.getLeaseRef());
+        return new IssueOtpResponse(code);
+    }
+
+    /**
      * Record a signature from the caller (tenant or landlord). When
-     * both signatures land the lease flips to SIGNED. The downstream
-     * application status (COMPLETED + unit OCCUPIED) lands in slice 4.
+     * both signatures land the lease flips to SIGNED, the signed PDF
+     * is rendered and persisted, and a LeaseSignedEvent fires so the
+     * move-in listener can finalise.
      */
     @Transactional
     public LeaseResponse sign(UUID id, SignLeaseRequest req) {
         UUID me = security.requireUserId();
+        if (req == null || req.otp() == null || req.otp().isBlank()) {
+            throw new BadRequestException(ErrorMessages.LEASE_OTP_INVALID);
+        }
         Lease lease = leases.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.LEASE_NOT_FOUND));
 
@@ -145,31 +180,44 @@ public class LeaseService {
         UUID tenantId = lease.getTenant().getId();
         UUID landlordId = lease.getLandlord().getId();
 
+        if (!me.equals(tenantId) && !me.equals(landlordId)) {
+            throw new ForbiddenException(ErrorMessages.FORBIDDEN);
+        }
+        // Verify BEFORE flipping any state — failing OTP returns 400
+        // without recording a signature timestamp.
+        if (!otp.verifyAndConsume(otpSubject(me, id), OTP_PURPOSE_LEASE_SIGN, req.otp())) {
+            throw new BadRequestException(ErrorMessages.LEASE_OTP_INVALID);
+        }
+
         OffsetDateTime now = OffsetDateTime.now();
         if (me.equals(tenantId)) {
             if (lease.getTenantSignedAt() != null) {
                 throw new ConflictException(ErrorMessages.LEASE_ALREADY_SIGNED);
             }
             lease.setTenantSignedAt(now);
-        } else if (me.equals(landlordId)) {
+        } else {
             if (lease.getLandlordSignedAt() != null) {
                 throw new ConflictException(ErrorMessages.LEASE_ALREADY_SIGNED);
             }
             lease.setLandlordSignedAt(now);
-        } else {
-            throw new ForbiddenException(ErrorMessages.FORBIDDEN);
         }
-
-        // OTP is mocked — req kept on the signature for forward-compat
-        // when the real e-IDAS hook lands.
-        if (req != null) {
-            log.debug("lease {} signed by {} (otp present={})",
-                    lease.getLeaseRef(), me, req.otp() != null);
-        }
+        log.info("lease {} signed by {}", lease.getLeaseRef(), me);
 
         if (lease.getTenantSignedAt() != null && lease.getLandlordSignedAt() != null) {
             lease.setStatus(LeaseStatus.SIGNED);
-            log.info("lease {} fully signed", lease.getLeaseRef());
+            // Render + persist the PDF before the listener fires. If
+            // either render or storage throws, the whole sign rolls back
+            // — better to ask the user to retry than to flip status with
+            // no PDF backing it.
+            byte[] pdf = leasePdf.render(lease);
+            StoredFile stored = storage.storeTrustedBytes(
+                    StorageConstants.FOLDER_LEASES,
+                    lease.getLeaseRef() + ".pdf",
+                    "application/pdf",
+                    pdf);
+            lease.setSignedPdfUrl(stored.storedPath());
+            log.info("lease {} fully signed; PDF stored at {}",
+                    lease.getLeaseRef(), stored.storedPath());
             // AFTER_COMMIT listener handles the move-in side effects:
             // application → COMPLETED, unit → OCCUPIED, party notifications.
             // Decouples slice-4 concerns from this service per
@@ -178,6 +226,37 @@ public class LeaseService {
         }
 
         return LeaseResponse.from(lease);
+    }
+
+    /**
+     * Open the signed PDF for download. Only available after both
+     * parties have signed; either party can fetch it.
+     */
+    @Transactional(readOnly = true)
+    public PdfHandle openSignedPdf(UUID id) {
+        UUID me = security.requireUserId();
+        Lease lease = leases.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.LEASE_NOT_FOUND));
+        requirePartyOrThrow(lease, me);
+        String storedPath = lease.getSignedPdfUrl();
+        if (storedPath == null || storedPath.isBlank()) {
+            throw new ConflictException(ErrorMessages.LEASE_PDF_NOT_READY);
+        }
+        StoredResource resource = storage.open(storedPath);
+        String filename = (lease.getLeaseRef() == null ? "lease" : lease.getLeaseRef()) + ".pdf";
+        return new PdfHandle(resource, filename);
+    }
+
+    public record PdfHandle(StoredResource resource, String fileName) {}
+
+    /**
+     * Derive a stable subject UUID from (userId, leaseId) so a code
+     * issued for one lease can't be replayed against a different lease
+     * the same user is also signing.
+     */
+    private static UUID otpSubject(UUID userId, UUID leaseId) {
+        return UUID.nameUUIDFromBytes(
+                (userId + ":" + leaseId).getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     /** Either party declines. Lease is terminal; the application can be withdrawn separately. */

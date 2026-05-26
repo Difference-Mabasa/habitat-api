@@ -1,6 +1,7 @@
 package com.habitat.api.service;
 
 import com.habitat.api.dto.lease.DeclineLeaseRequest;
+import com.habitat.api.dto.lease.IssueOtpResponse;
 import com.habitat.api.dto.lease.SignLeaseRequest;
 import com.habitat.api.event.LeaseSignedEvent;
 import com.habitat.api.entity.Application;
@@ -12,11 +13,14 @@ import com.habitat.api.enums.ApplicationStatus;
 import com.habitat.api.enums.LeaseStatus;
 import com.habitat.api.enums.LeaseTemplate;
 import com.habitat.api.enums.UnitStatus;
+import com.habitat.api.exception.BadRequestException;
 import com.habitat.api.exception.ConflictException;
 import com.habitat.api.exception.ForbiddenException;
 import com.habitat.api.exception.ResourceNotFoundException;
 import com.habitat.api.repository.LeaseRepository;
 import com.habitat.api.security.SecurityUtils;
+import com.habitat.api.storage.StorageService;
+import com.habitat.api.storage.StoredFile;
 import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +38,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,6 +50,9 @@ class LeaseServiceTest {
     @Mock LeaseRepository leases;
     @Mock ApplicationEventPublisher events;
     @Mock SecurityUtils security;
+    @Mock OtpService otp;
+    @Mock LeasePdfService leasePdf;
+    @Mock StorageService storage;
     @InjectMocks LeaseService service;
 
     private static final UUID TENANT_ID   = UUID.fromString("11111111-1111-1111-1111-111111111111");
@@ -151,11 +160,37 @@ class LeaseServiceTest {
     }
 
     @Test
+    void issueSignOtp_returns_a_code_for_a_party() {
+        Application app = applicationWith(ApplicationStatus.LEASE_PENDING_SIGNATURES, new BigDecimal("9000"));
+        Lease l = leaseWith(LeaseStatus.PENDING_SIGNATURES, app);
+        when(security.requireUserId()).thenReturn(TENANT_ID);
+        when(leases.findById(l.getId())).thenReturn(Optional.of(l));
+        when(otp.issue(any(UUID.class), eq("lease-sign"))).thenReturn("654321");
+
+        IssueOtpResponse out = service.issueSignOtp(l.getId());
+
+        assertThat(out.devCode()).isEqualTo("654321");
+    }
+
+    @Test
+    void issueSignOtp_forbidden_for_strangers() {
+        Application app = applicationWith(ApplicationStatus.LEASE_PENDING_SIGNATURES, new BigDecimal("9000"));
+        Lease l = leaseWith(LeaseStatus.PENDING_SIGNATURES, app);
+        UUID stranger = UUID.fromString("88888888-8888-8888-8888-888888888888");
+        when(security.requireUserId()).thenReturn(stranger);
+        when(leases.findById(l.getId())).thenReturn(Optional.of(l));
+
+        assertThatThrownBy(() -> service.issueSignOtp(l.getId()))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
     void sign_records_tenant_signature() {
         Application app = applicationWith(ApplicationStatus.LEASE_PENDING_SIGNATURES, new BigDecimal("9000"));
         Lease l = leaseWith(LeaseStatus.PENDING_SIGNATURES, app);
         when(security.requireUserId()).thenReturn(TENANT_ID);
         when(leases.findById(l.getId())).thenReturn(Optional.of(l));
+        when(otp.verifyAndConsume(any(UUID.class), eq("lease-sign"), eq("123456"))).thenReturn(true);
 
         var out = service.sign(l.getId(), new SignLeaseRequest("123456"));
 
@@ -166,30 +201,63 @@ class LeaseServiceTest {
     }
 
     @Test
-    void sign_completes_to_SIGNED_when_both_parties_have_signed() {
+    void sign_completes_to_SIGNED_and_persists_pdf_when_both_parties_have_signed() {
         Application app = applicationWith(ApplicationStatus.LEASE_PENDING_SIGNATURES, new BigDecimal("9000"));
         Lease l = leaseWith(LeaseStatus.PENDING_SIGNATURES, app);
         l.setLandlordSignedAt(java.time.OffsetDateTime.now());
         when(security.requireUserId()).thenReturn(TENANT_ID);
         when(leases.findById(l.getId())).thenReturn(Optional.of(l));
+        when(otp.verifyAndConsume(any(UUID.class), anyString(), anyString())).thenReturn(true);
+        byte[] fakePdf = "%PDF-1.4...".getBytes();
+        when(leasePdf.render(l)).thenReturn(fakePdf);
+        when(storage.storeTrustedBytes(eq("leases"), anyString(), eq("application/pdf"), eq(fakePdf)))
+                .thenReturn(new StoredFile("leases/uuid-HB-LSE-TESTREF.pdf", "application/pdf", fakePdf.length));
 
         service.sign(l.getId(), new SignLeaseRequest("123456"));
 
         assertThat(l.getStatus()).isEqualTo(LeaseStatus.SIGNED);
+        assertThat(l.getSignedPdfUrl()).isEqualTo("leases/uuid-HB-LSE-TESTREF.pdf");
         verify(events).publishEvent(new LeaseSignedEvent(l.getId()));
     }
 
     @Test
-    void sign_does_NOT_publish_event_on_first_signature() {
+    void sign_does_NOT_publish_event_or_render_pdf_on_first_signature() {
         Application app = applicationWith(ApplicationStatus.LEASE_PENDING_SIGNATURES, new BigDecimal("9000"));
         Lease l = leaseWith(LeaseStatus.PENDING_SIGNATURES, app);
         when(security.requireUserId()).thenReturn(TENANT_ID);
         when(leases.findById(l.getId())).thenReturn(Optional.of(l));
+        when(otp.verifyAndConsume(any(UUID.class), anyString(), anyString())).thenReturn(true);
 
         service.sign(l.getId(), new SignLeaseRequest("123456"));
 
         assertThat(l.getStatus()).isEqualTo(LeaseStatus.PENDING_SIGNATURES);
+        assertThat(l.getSignedPdfUrl()).isNull();
         verify(events, never()).publishEvent(any(LeaseSignedEvent.class));
+        verify(leasePdf, never()).render(any());
+    }
+
+    @Test
+    void sign_rejects_an_invalid_otp() {
+        Application app = applicationWith(ApplicationStatus.LEASE_PENDING_SIGNATURES, new BigDecimal("9000"));
+        Lease l = leaseWith(LeaseStatus.PENDING_SIGNATURES, app);
+        when(security.requireUserId()).thenReturn(TENANT_ID);
+        when(leases.findById(l.getId())).thenReturn(Optional.of(l));
+        when(otp.verifyAndConsume(any(UUID.class), anyString(), anyString())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.sign(l.getId(), new SignLeaseRequest("000000")))
+                .isInstanceOf(BadRequestException.class);
+        assertThat(l.getTenantSignedAt()).isNull();
+    }
+
+    @Test
+    void sign_rejects_blank_otp_without_calling_verify() {
+        // @Valid + @NotBlank also catches this at the controller, but the
+        // service-layer guard means a programmatic caller (other service,
+        // future migration script) can't squeeze through with an empty
+        // string either.
+        assertThatThrownBy(() -> service.sign(LEASE_ID, new SignLeaseRequest("   ")))
+                .isInstanceOf(BadRequestException.class);
+        verify(otp, never()).verifyAndConsume(any(), anyString(), anyString());
     }
 
     @Test
@@ -199,8 +267,9 @@ class LeaseServiceTest {
         l.setTenantSignedAt(java.time.OffsetDateTime.now());
         when(security.requireUserId()).thenReturn(TENANT_ID);
         when(leases.findById(l.getId())).thenReturn(Optional.of(l));
+        when(otp.verifyAndConsume(any(UUID.class), anyString(), anyString())).thenReturn(true);
 
-        assertThatThrownBy(() -> service.sign(l.getId(), null))
+        assertThatThrownBy(() -> service.sign(l.getId(), new SignLeaseRequest("123456")))
                 .isInstanceOf(ConflictException.class);
     }
 
@@ -212,7 +281,7 @@ class LeaseServiceTest {
         when(security.requireUserId()).thenReturn(stranger);
         when(leases.findById(l.getId())).thenReturn(Optional.of(l));
 
-        assertThatThrownBy(() -> service.sign(l.getId(), null))
+        assertThatThrownBy(() -> service.sign(l.getId(), new SignLeaseRequest("123456")))
                 .isInstanceOf(ForbiddenException.class);
     }
 
@@ -223,7 +292,7 @@ class LeaseServiceTest {
         when(security.requireUserId()).thenReturn(TENANT_ID);
         when(leases.findById(l.getId())).thenReturn(Optional.of(l));
 
-        assertThatThrownBy(() -> service.sign(l.getId(), null))
+        assertThatThrownBy(() -> service.sign(l.getId(), new SignLeaseRequest("123456")))
                 .isInstanceOf(ConflictException.class);
     }
 

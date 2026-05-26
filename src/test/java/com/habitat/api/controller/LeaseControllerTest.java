@@ -101,6 +101,46 @@ class LeaseControllerTest {
         verify(leases).decline(eq(LEASE_ID), any());
     }
 
+    @Test
+    void sign_rejects_a_missing_body() throws Exception {
+        // @NotBlank otp means the controller's @Valid catches this
+        // before the service is called.
+        mvc.perform(post(ApiRoutes.LEASES + "/" + LEASE_ID + "/sign").with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    void issue_otp_returns_a_dev_code() throws Exception {
+        when(leases.issueSignOtp(LEASE_ID))
+                .thenReturn(new com.habitat.api.dto.lease.IssueOtpResponse("987654"));
+
+        mvc.perform(post(ApiRoutes.LEASES + "/" + LEASE_ID + "/otp").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.devCode").value("987654"));
+        verify(leases).issueSignOtp(LEASE_ID);
+    }
+
+    @Test
+    void download_pdf_streams_the_signed_file() throws Exception {
+        byte[] payload = "%PDF-1.4 fake".getBytes();
+        when(leases.openSignedPdf(LEASE_ID)).thenReturn(
+                new com.habitat.api.service.LeaseService.PdfHandle(
+                        new com.habitat.api.storage.StoredResource(
+                                new java.io.ByteArrayInputStream(payload),
+                                "application/pdf", payload.length),
+                        "HB-LSE-DEMOREF.pdf"));
+
+        mvc.perform(get(ApiRoutes.LEASES + "/" + LEASE_ID + "/pdf"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("Content-Type", "application/pdf"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("Content-Disposition",
+                                "inline; filename=\"HB-LSE-DEMOREF.pdf\""));
+    }
+
     private static LeaseResponse stub(LeaseStatus status) {
         return new LeaseResponse(
                 LEASE_ID,

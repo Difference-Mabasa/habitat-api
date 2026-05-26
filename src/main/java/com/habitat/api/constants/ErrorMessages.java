@@ -39,6 +39,10 @@ public final class ErrorMessages {
             "This lease can't be signed in its current state.";
     public static final String LEASE_ALREADY_SIGNED =
             "You've already signed this lease.";
+    public static final String LEASE_OTP_INVALID =
+            "That code is incorrect or has expired. Request a new one.";
+    public static final String LEASE_PDF_NOT_READY =
+            "The signed PDF is generated once both parties have signed.";
     public static final String SYSTEM_IN_APP_CANNOT_BE_MUTED =
             "Account & security in-app alerts can't be muted.";
 

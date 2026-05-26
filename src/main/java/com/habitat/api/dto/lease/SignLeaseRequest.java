@@ -1,12 +1,14 @@
 package com.habitat.api.dto.lease;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Body for {@code POST /leases/{id}/sign}. OTP signing is mocked
- * today — the caller passes a 6-digit OTP that the service trivially
- * accepts. Real e-IDAS qualified signing lands in a later slice.
+ * Body for {@code POST /leases/{id}/sign}. Phase 6: OTP is required
+ * and verified server-side against the most-recent code issued by
+ * {@code POST /leases/{id}/otp}. The code is single-use — a second
+ * sign attempt with the same code returns LEASE_OTP_INVALID.
  */
 public record SignLeaseRequest(
-        @Size(min = 4, max = 12) String otp
+        @NotBlank @Size(min = 4, max = 12) String otp
 ) {}

@@ -41,4 +41,17 @@
         <Class name="com.habitat.api.security.JwtService"/>
     </Match>
 
+    <!--
+        VA_FORMAT_STRING_USES_NEWLINE: LeasePdfService.buildHtml uses a Java
+        text block to lay out the HTML lease template legibly. The embedded
+        '\n' newlines exist only in the source; the rendered PDF is laid out
+        by openhtmltopdf from the HTML structure, not from those newlines.
+        Suppressing the warning is correct — replacing them with %n would
+        introduce platform-dependent output for no benefit.
+    -->
+    <Match>
+        <Bug pattern="VA_FORMAT_STRING_USES_NEWLINE"/>
+        <Class name="com.habitat.api.service.LeasePdfService"/>
+    </Match>
+
 </FindBugsFilter>
