@@ -26,6 +26,7 @@ public final class ApiRoutes {
     public static final String USERS = BASE + "/users";
     public static final String USERS_ME = USERS + "/me";
     public static final String USERS_ME_ACTIVE_ROLE = USERS_ME + "/active-role";
+    public static final String USERS_ME_BANK_ACCOUNT = USERS_ME + "/bank-account";
 
     // Notifications
     public static final String NOTIFICATIONS = BASE + "/notifications";
@@ -53,6 +54,11 @@ public final class ApiRoutes {
 
     // Files (ownership-checked download paths — Phase 7)
     public static final String FILES = BASE + "/files";
+    public static final String FILES_IMAGES = FILES + "/images";
+
+    // Image lifecycle (the GET is on FILES_IMAGES; DELETE is on the row)
+    public static final String PROPERTY_IMAGES = BASE + "/property-images";
+    public static final String UNIT_IMAGES = BASE + "/unit-images";
 
     // Landing-page aggregates (public)
     public static final String LANDING = BASE + "/landing";

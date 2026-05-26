@@ -11,15 +11,20 @@ import com.habitat.api.dto.property.PropertySummary;
 import com.habitat.api.dto.property.UnitResponse;
 import com.habitat.api.dto.property.UpdatePropertyRequest;
 import com.habitat.api.entity.Property;
+import com.habitat.api.entity.PropertyRequiredDocument;
 import com.habitat.api.entity.Unit;
 import com.habitat.api.entity.User;
+import com.habitat.api.enums.DocumentType;
+import com.habitat.api.enums.ListingMode;
 import com.habitat.api.enums.PaymentFrequency;
 import com.habitat.api.enums.PropertyStatus;
 import com.habitat.api.enums.UnitStatus;
 import com.habitat.api.enums.UnitType;
+import com.habitat.api.exception.ConflictException;
 import com.habitat.api.exception.ForbiddenException;
 import com.habitat.api.exception.ResourceNotFoundException;
 import com.habitat.api.repository.PropertyRepository;
+import com.habitat.api.repository.PropertyRequiredDocumentRepository;
 import com.habitat.api.repository.UnitRepository;
 import com.habitat.api.repository.UserRepository;
 import com.habitat.api.security.SecurityUtils;
@@ -56,6 +61,7 @@ public class PropertyService {
     private final PropertyRepository properties;
     private final UnitRepository units;
     private final UserRepository users;
+    private final PropertyRequiredDocumentRepository requiredDocs;
     private final SecurityUtils security;
 
     public enum SortKey {
@@ -253,6 +259,9 @@ public class PropertyService {
         User user = users.findById(me)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.USER_NOT_FOUND));
 
+        ListingMode mode = req.listingMode() == null ? ListingMode.LANDLORD_DIRECT : req.listingMode();
+        validateMandatePair(mode, req.mandateFeePercent());
+
         Property p = Property.builder()
                 .landlord(user)
                 .manager(user)
@@ -267,6 +276,8 @@ public class PropertyService {
                 .postalCode(blankToNull(req.postalCode()))
                 .latitude(req.latitude())
                 .longitude(req.longitude())
+                .listingMode(mode)
+                .mandateFeePercent(mode == ListingMode.AGENT_MANAGED ? req.mandateFeePercent() : null)
                 .build();
         properties.save(p);
         log.info("property {} created by user {}", p.getId(), me);
@@ -289,9 +300,90 @@ public class PropertyService {
         if (req.postalCode() != null)   p.setPostalCode(blankToNull(req.postalCode()));
         if (req.latitude() != null)     p.setLatitude(req.latitude());
         if (req.longitude() != null)    p.setLongitude(req.longitude());
+        if (req.listingMode() != null) {
+            ListingMode mode = req.listingMode();
+            // The fee tracks the mode it was assigned under — flipping back to
+            // LANDLORD_DIRECT clears the previous fee.
+            BigDecimal fee = req.mandateFeePercent() != null
+                    ? req.mandateFeePercent() : p.getMandateFeePercent();
+            validateMandatePair(mode, fee);
+            p.setListingMode(mode);
+            p.setMandateFeePercent(mode == ListingMode.AGENT_MANAGED ? fee : null);
+        } else if (req.mandateFeePercent() != null) {
+            validateMandatePair(p.getListingMode(), req.mandateFeePercent());
+            p.setMandateFeePercent(req.mandateFeePercent());
+        }
 
         log.info("property {} updated by user {}", p.getId(), security.requireUserId());
         return PropertyDetailResponse.from(p);
+    }
+
+    /**
+     * Publish a draft listing. Idempotent — re-publishing a LISTED row is
+     * a no-op. UNLISTED rows can be re-listed too (the wizard isn't the
+     * only path; the dashboard might want to un-pause an old listing).
+     */
+    @Transactional
+    public PropertyDetailResponse publish(UUID id) {
+        Property p = findOrThrow(id);
+        requireCanEdit(p);
+        if (p.getStatus() == PropertyStatus.LISTED) {
+            return PropertyDetailResponse.from(p);
+        }
+        // Guardrails — a listing with no rentable units is not a listing.
+        long publishable = p.getUnits().stream()
+                .filter(u -> u.getDeletedAt() == null)
+                .count();
+        if (publishable == 0) {
+            throw new ConflictException(ErrorMessages.PROPERTY_NEEDS_UNIT_BEFORE_PUBLISH);
+        }
+        p.setStatus(PropertyStatus.LISTED);
+        log.info("property {} published by user {}", p.getId(), security.requireUserId());
+        return PropertyDetailResponse.from(p);
+    }
+
+    /**
+     * Replace the required-documents set on a property. Idempotent.
+     * Sends through the soft-delete path on rows that drop out so the
+     * audit trail survives even when a landlord toggles requirements.
+     */
+    @Transactional
+    public List<DocumentType> setRequiredDocuments(UUID propertyId, List<DocumentType> docTypes) {
+        Property p = findOrThrow(propertyId);
+        requireCanEdit(p);
+
+        java.util.Set<DocumentType> desired = docTypes == null
+                ? java.util.Set.of()
+                : new java.util.LinkedHashSet<>(docTypes);
+        java.util.List<PropertyRequiredDocument> existing =
+                requiredDocs.findByProperty_Id(propertyId);
+        java.util.Set<DocumentType> existingTypes = new java.util.HashSet<>();
+
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        for (PropertyRequiredDocument row : existing) {
+            existingTypes.add(row.getDocType());
+            if (!desired.contains(row.getDocType())) {
+                row.setDeletedAt(now);
+            }
+        }
+        for (DocumentType type : desired) {
+            if (!existingTypes.contains(type)) {
+                requiredDocs.save(PropertyRequiredDocument.builder()
+                        .property(p).docType(type).build());
+            }
+        }
+        log.info("property {} required-docs set to {} by user {}",
+                propertyId, desired, security.requireUserId());
+        return new java.util.ArrayList<>(desired);
+    }
+
+    /** Caller's managed properties (any status), newest first. */
+    @Transactional(readOnly = true)
+    public PageResponse<PropertyDetailResponse> listManagedByMe(int page, int size) {
+        UUID me = security.requireUserId();
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 100)));
+        Page<Property> p = properties.findByManagerIdOrderByCreatedAtDesc(me, pageable);
+        return PageResponse.from(p.map(PropertyDetailResponse::from));
     }
 
     @Transactional
@@ -356,5 +448,19 @@ public class PropertyService {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    /**
+     * Reject an inconsistent (mode, fee) pair. AGENT_MANAGED demands a
+     * fee; LANDLORD_DIRECT must not carry one. The wizard's UI prevents
+     * the bad pairing but a JSON caller could still send it.
+     */
+    private static void validateMandatePair(ListingMode mode, BigDecimal fee) {
+        if (mode == ListingMode.AGENT_MANAGED && fee == null) {
+            throw new ForbiddenException(ErrorMessages.MANDATE_FEE_REQUIRED);
+        }
+        if (mode == ListingMode.LANDLORD_DIRECT && fee != null && fee.signum() != 0) {
+            throw new ForbiddenException(ErrorMessages.MANDATE_FEE_DISALLOWED);
+        }
     }
 }

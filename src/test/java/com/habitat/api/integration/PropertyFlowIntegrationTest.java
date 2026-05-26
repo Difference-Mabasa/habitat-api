@@ -184,6 +184,7 @@ class PropertyFlowIntegrationTest {
         CreatePropertyRequest req = new CreatePropertyRequest(
                 "Test Property", null, PropertyType.HOUSE,
                 null, "Sandton", "Johannesburg", "Gauteng", "2196",
+                null, null,
                 null, null
         );
         mvc.perform(post(ApiRoutes.PROPERTIES)
@@ -206,7 +207,8 @@ class PropertyFlowIntegrationTest {
         CreatePropertyRequest req = new CreatePropertyRequest(
                 "Integration Test Property", "for the integration test", PropertyType.HOUSE,
                 "1 Test Road", "Sandton", "Johannesburg", "Gauteng", "2196",
-                -26.1, 28.0
+                -26.1, 28.0,
+                null, null
         );
         String createBody = mvc.perform(post(ApiRoutes.PROPERTIES)
                         .header("Authorization", "Bearer " + tokens.accessToken())

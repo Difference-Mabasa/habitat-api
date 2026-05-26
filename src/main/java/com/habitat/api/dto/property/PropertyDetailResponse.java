@@ -1,6 +1,7 @@
 package com.habitat.api.dto.property;
 
 import com.habitat.api.entity.Property;
+import com.habitat.api.enums.ListingMode;
 import com.habitat.api.enums.PropertyStatus;
 import com.habitat.api.enums.PropertyType;
 
@@ -37,7 +38,11 @@ public record PropertyDetailResponse(
         /** Aggregated rating (0.00–5.00). Zero for un-reviewed listings. */
         BigDecimal avgRating,
         /** Number of reviews backing avgRating. Zero for un-reviewed listings. */
-        int ratingCount
+        int ratingCount,
+        /** Wizard "Mandate" step: who controls the listing. */
+        ListingMode listingMode,
+        /** Wizard "Mandate" step: agent fee percent. Null for LANDLORD_DIRECT. */
+        BigDecimal mandateFeePercent
 ) {
     public static PropertyDetailResponse from(Property p) {
         return new PropertyDetailResponse(
@@ -60,7 +65,9 @@ public record PropertyDetailResponse(
                 p.getUnits().stream().map(UnitResponse::from).toList(),
                 p.getCreatedAt(),
                 p.getAvgRating(),
-                p.getRatingCount()
+                p.getRatingCount(),
+                p.getListingMode(),
+                p.getMandateFeePercent()
         );
     }
 }

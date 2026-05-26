@@ -18,6 +18,7 @@ import com.habitat.api.enums.UnitType;
 import com.habitat.api.security.JwtAuthenticationFilter;
 import com.habitat.api.security.JwtService;
 import com.habitat.api.security.SecurityUtils;
+import com.habitat.api.service.PropertyImageService;
 import com.habitat.api.service.PropertyService;
 import com.habitat.api.service.TokenBlocklistService;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,7 @@ class PropertyControllerTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @MockBean PropertyService properties;
+    @MockBean PropertyImageService propertyImages;
     @MockBean SecurityUtils security;
     @MockBean JwtService jwtService;
     @MockBean TokenBlocklistService blocklist;
@@ -128,6 +130,7 @@ class PropertyControllerTest {
         CreatePropertyRequest req = new CreatePropertyRequest(
                 "Sandton Villa", null, PropertyType.HOUSE,
                 null, "Sandton", "Johannesburg", "Gauteng", "2196",
+                null, null,
                 null, null
         );
         when(properties.create(any(CreatePropertyRequest.class))).thenReturn(sampleDetail());
@@ -143,7 +146,8 @@ class PropertyControllerTest {
     void create_returns_422_on_blank_title() throws Exception {
         CreatePropertyRequest req = new CreatePropertyRequest(
                 "", null, PropertyType.HOUSE,
-                null, null, null, null, null, null, null
+                null, null, null, null, null, null, null,
+                null, null
         );
 
         mvc.perform(post(ApiRoutes.PROPERTIES).with(csrf())
@@ -156,7 +160,8 @@ class PropertyControllerTest {
     void update_returns_200() throws Exception {
         UpdatePropertyRequest req = new UpdatePropertyRequest(
                 "New Title", null, null, PropertyStatus.LISTED,
-                null, null, null, null, null, null, null
+                null, null, null, null, null, null, null,
+                null, null
         );
         when(properties.update(eq(PROP_ID), any(UpdatePropertyRequest.class))).thenReturn(sampleDetail());
 
@@ -258,7 +263,9 @@ class PropertyControllerTest {
                 landlordId,
                 new com.habitat.api.dto.property.ManagerRef(landlordId, "Demo", "Owner"),
                 List.of(), List.of(), OffsetDateTime.now(),
-                new BigDecimal("4.50"), 12
+                new BigDecimal("4.50"), 12,
+                com.habitat.api.enums.ListingMode.LANDLORD_DIRECT,
+                null
         );
     }
 

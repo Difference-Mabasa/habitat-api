@@ -1,6 +1,7 @@
 package com.habitat.api.entity;
 
 import com.habitat.api.entity.base.BaseEntity;
+import com.habitat.api.enums.ListingMode;
 import com.habitat.api.enums.PropertyStatus;
 import com.habitat.api.enums.PropertyType;
 import jakarta.persistence.CascadeType;
@@ -69,6 +70,21 @@ public class Property extends BaseEntity {
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
     private PropertyStatus status = PropertyStatus.DRAFT;
+
+    // ── Phase 4 (listing wizard) — mandate metadata ──────────────────
+    // V27 captures the wizard's "Mandate" step inline on the property.
+    // LANDLORD_DIRECT is the default; AGENT_MANAGED + the fee percent
+    // are set when an agent placed the mandate. The full agent-mandate
+    // state machine lands in Phase 12; these fields are the minimum
+    // facts that survive the wizard until then.
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "listing_mode", length = 20)
+    @Builder.Default
+    private ListingMode listingMode = ListingMode.LANDLORD_DIRECT;
+
+    @Column(name = "mandate_fee_percent", precision = 5, scale = 2)
+    private BigDecimal mandateFeePercent;
 
     // ── Structured address (mirrors the User.address shape) ───────────
 

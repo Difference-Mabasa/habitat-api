@@ -21,6 +21,12 @@ public final class ErrorMessages {
     public static final String USER_NOT_FOUND = "User not found.";
     public static final String NOTIFICATION_NOT_FOUND = "Notification not found.";
     public static final String PROPERTY_NOT_FOUND = "Property not found.";
+    public static final String PROPERTY_NEEDS_UNIT_BEFORE_PUBLISH =
+            "Add at least one unit before publishing this listing.";
+    public static final String MANDATE_FEE_REQUIRED =
+            "Agent-managed listings must include a mandate fee.";
+    public static final String MANDATE_FEE_DISALLOWED =
+            "Landlord-direct listings can't carry a mandate fee.";
     public static final String UNIT_NOT_FOUND = "Unit not found.";
     public static final String UNIT_NOT_AVAILABLE = "This unit isn't accepting applications right now.";
     public static final String APPLICATION_ALREADY_SUBMITTED = "You've already applied for this unit.";

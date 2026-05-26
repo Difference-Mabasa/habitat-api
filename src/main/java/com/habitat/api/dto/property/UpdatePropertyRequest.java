@@ -1,8 +1,13 @@
 package com.habitat.api.dto.property;
 
+import com.habitat.api.enums.ListingMode;
 import com.habitat.api.enums.PropertyStatus;
 import com.habitat.api.enums.PropertyType;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
+
+import java.math.BigDecimal;
 
 /**
  * PATCH-style update — every field optional. Null = "don't touch that
@@ -19,5 +24,7 @@ public record UpdatePropertyRequest(
         @Size(max = 80) String province,
         @Size(max = 10) String postalCode,
         Double latitude,
-        Double longitude
+        Double longitude,
+        ListingMode listingMode,
+        @DecimalMin("0.00") @DecimalMax("100.00") BigDecimal mandateFeePercent
 ) {}

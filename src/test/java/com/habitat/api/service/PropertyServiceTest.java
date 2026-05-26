@@ -370,7 +370,8 @@ class PropertyServiceTest {
         CreatePropertyRequest req = new CreatePropertyRequest(
                 "Sandton Villa", "  ", PropertyType.HOUSE,
                 "5 Rivonia Rd", "Sandton", "Johannesburg", "Gauteng", "2196",
-                -26.1, 28.0
+                -26.1, 28.0,
+                null, null
         );
 
         service.create(req);
@@ -393,7 +394,8 @@ class PropertyServiceTest {
 
         CreatePropertyRequest req = new CreatePropertyRequest(
                 "Sandton Villa", null, PropertyType.HOUSE,
-                null, null, null, null, null, null, null
+                null, null, null, null, null, null, null,
+                null, null
         );
 
         assertThatThrownBy(() -> service.create(req))
@@ -412,7 +414,8 @@ class PropertyServiceTest {
 
         service.update(PROP_ID, new UpdatePropertyRequest(
                 "New Title", null, null, PropertyStatus.LISTED,
-                null, "Sandton", null, null, null, null, null
+                null, "Sandton", null, null, null, null, null,
+                null, null
         ));
 
         assertThat(p.getTitle()).isEqualTo("New Title");
@@ -429,7 +432,8 @@ class PropertyServiceTest {
         when(security.currentUserId()).thenReturn(Optional.of(OTHER_ID));
 
         assertThatThrownBy(() -> service.update(PROP_ID, new UpdatePropertyRequest(
-                "x", null, null, null, null, null, null, null, null, null, null)))
+                "x", null, null, null, null, null, null, null, null, null, null,
+                null, null)))
                 .isInstanceOf(ForbiddenException.class);
     }
 
@@ -441,7 +445,8 @@ class PropertyServiceTest {
         when(security.currentUserId()).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.update(PROP_ID, new UpdatePropertyRequest(
-                "x", null, null, null, null, null, null, null, null, null, null)))
+                "x", null, null, null, null, null, null, null, null, null, null,
+                null, null)))
                 .isInstanceOf(ForbiddenException.class);
     }
 
