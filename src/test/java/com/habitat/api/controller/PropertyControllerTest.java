@@ -266,6 +266,7 @@ class PropertyControllerTest {
                 new BigDecimal("4.50"), 12,
                 com.habitat.api.enums.ListingMode.LANDLORD_DIRECT,
                 null,
+                List.of(),
                 List.of()
         );
     }

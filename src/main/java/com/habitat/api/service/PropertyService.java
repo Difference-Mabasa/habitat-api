@@ -254,7 +254,14 @@ public class PropertyService {
         if (p.getStatus() != PropertyStatus.LISTED && !canEdit(p)) {
             throw new ResourceNotFoundException(ErrorMessages.PROPERTY_NOT_FOUND);
         }
-        return PropertyDetailResponse.from(p);
+        // Only the manager / landlord / admin sees the required-docs set;
+        // anonymous /browse viewers don't need it.
+        List<DocumentType> docs = canEdit(p)
+                ? requiredDocs.findByProperty_Id(p.getId()).stream()
+                        .map(PropertyRequiredDocument::getDocType)
+                        .toList()
+                : List.of();
+        return PropertyDetailResponse.fromWithRequiredDocs(p, docs);
     }
 
     @Transactional

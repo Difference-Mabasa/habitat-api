@@ -1,6 +1,7 @@
 package com.habitat.api.dto.property;
 
 import com.habitat.api.entity.Property;
+import com.habitat.api.enums.DocumentType;
 import com.habitat.api.enums.ListingMode;
 import com.habitat.api.enums.PropertyStatus;
 import com.habitat.api.enums.PropertyType;
@@ -44,9 +45,24 @@ public record PropertyDetailResponse(
         /** Wizard "Mandate" step: agent fee percent. Null for LANDLORD_DIRECT. */
         BigDecimal mandateFeePercent,
         /** Property-level amenities (WiFi / Parking / Garden …). */
-        List<AmenityResponse> amenities
+        List<AmenityResponse> amenities,
+        /**
+         * Document types tenants must submit when applying. Powers the
+         * wizard's "Application requirements" step on draft resume.
+         */
+        List<DocumentType> requiredDocuments
 ) {
     public static PropertyDetailResponse from(Property p) {
+        return fromWithRequiredDocs(p, List.of());
+    }
+
+    /**
+     * Variant including the required-documents set. {@code PropertyService}
+     * uses this on read so the wizard's edit-mode hydration doesn't
+     * need a second round-trip.
+     */
+    public static PropertyDetailResponse fromWithRequiredDocs(
+            Property p, List<DocumentType> requiredDocuments) {
         return new PropertyDetailResponse(
                 p.getId(),
                 p.getTitle(),
@@ -75,7 +91,8 @@ public record PropertyDetailResponse(
                                 .comparingInt(com.habitat.api.entity.Amenity::getSortOrder)
                                 .thenComparing(com.habitat.api.entity.Amenity::getName))
                         .map(AmenityResponse::from)
-                        .toList()
+                        .toList(),
+                requiredDocuments == null ? List.of() : requiredDocuments
         );
     }
 }
