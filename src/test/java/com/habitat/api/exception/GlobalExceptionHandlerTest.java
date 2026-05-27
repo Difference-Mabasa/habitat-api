@@ -9,7 +9,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -94,6 +96,19 @@ class GlobalExceptionHandlerTest {
     void no_handler_maps_to_404() {
         ResponseEntity<ApiError> response = handler.handleNotFound(
                 new NoHandlerFoundException("GET", "/missing", HttpHeaders.EMPTY));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().code()).isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void no_resource_found_maps_to_404() {
+        // Spring Boot 3.2+ default: unmapped requests fall through to
+        // the static-resource handler which throws NoResourceFoundException.
+        // Used to leak as 500; now classifies as 404 like its sibling.
+        ResponseEntity<ApiError> response = handler.handleNotFound(
+                new NoResourceFoundException(HttpMethod.GET, "/api/v1/users/me/bank-account"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isNotNull();

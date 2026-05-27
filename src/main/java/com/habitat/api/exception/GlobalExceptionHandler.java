@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -112,8 +113,22 @@ public class GlobalExceptionHandler {
                 ex.getMessage() == null ? "Authentication required." : ex.getMessage(), null);
     }
 
-    @ExceptionHandler(NoHandlerFoundException.class)
-    public ResponseEntity<ApiError> handleNotFound(NoHandlerFoundException ex) {
+    /**
+     * Unmapped routes. Spring 6 surfaces these two ways:
+     * <ul>
+     *   <li>{@link NoHandlerFoundException} — when
+     *       {@code throwExceptionIfNoHandlerFound=true} is set on the
+     *       DispatcherServlet.</li>
+     *   <li>{@link NoResourceFoundException} — the default path in
+     *       Spring Boot 3.2+; an unmapped request falls through to the
+     *       static-resource handler, which throws this when the file
+     *       doesn't exist either.</li>
+     * </ul>
+     * Both mean the same thing to the caller — there is no route — so
+     * both map to 404 NOT_FOUND.
+     */
+    @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
+    public ResponseEntity<ApiError> handleNotFound(Exception ex) {
         return build(HttpStatus.NOT_FOUND, "NOT_FOUND", "Route not found.", null);
     }
 
