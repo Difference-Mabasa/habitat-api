@@ -43,6 +43,8 @@ public final class ErrorMessages {
             "Viewings have to be scheduled in the future.";
     public static final String VIEWING_UNIT_NOT_AVAILABLE =
             "That unit isn't accepting viewings right now.";
+    public static final String VIEWING_SELF_BOOK =
+            "You can't book a viewing on a property you manage or own.";
     public static final String MANDATE_PDF_NOT_READY =
             "The mandate PDF hasn't been generated yet.";
     public static final String MANDATE_SIGNED_NOT_AVAILABLE =

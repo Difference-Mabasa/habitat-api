@@ -73,6 +73,21 @@ public class ViewingService {
         if (req.scheduledAt().isBefore(OffsetDateTime.now())) {
             throw new BadRequestException(ErrorMessages.VIEWING_SCHEDULED_AT_PAST);
         }
+        // Self-book guard: the manager + online owner are exactly the
+        // people who'd receive the VIEWING_REQUESTED push. Booking on
+        // your own listing self-notifies — refuse at the service edge.
+        var property = unit.getProperty();
+        var manager = property == null ? null : property.getManager();
+        if (manager != null && me.equals(manager.getId())) {
+            throw new ForbiddenException(ErrorMessages.VIEWING_SELF_BOOK);
+        }
+        var landlord = property == null ? null : property.getLandlord();
+        if (landlord != null
+                && landlord.getType() == com.habitat.api.enums.LandlordType.ONLINE
+                && landlord.getUser() != null
+                && me.equals(landlord.getUser().getId())) {
+            throw new ForbiddenException(ErrorMessages.VIEWING_SELF_BOOK);
+        }
 
         Viewing viewing = Viewing.builder()
                 .unit(unit)

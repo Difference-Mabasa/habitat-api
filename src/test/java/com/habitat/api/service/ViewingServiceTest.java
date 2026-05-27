@@ -94,6 +94,25 @@ class ViewingServiceTest {
                 .isInstanceOf(BadRequestException.class);
     }
 
+    @Test
+    void request_forbidden_when_caller_is_manager_of_property() {
+        // The manager + online owner are the recipients of
+        // VIEWING_REQUESTED — booking your own property would
+        // self-notify. Refuse at the service edge.
+        User tenantAlsoManager = user(MANAGER_ID);
+        Unit unit = unitWith(UnitStatus.AVAILABLE);
+        when(security.requireUserId()).thenReturn(MANAGER_ID);
+        when(users.findById(MANAGER_ID)).thenReturn(Optional.of(tenantAlsoManager));
+        when(units.findById(UNIT_ID)).thenReturn(Optional.of(unit));
+
+        var req = new RequestViewingRequest(
+                UNIT_ID, OffsetDateTime.now().plusDays(3), null);
+
+        assertThatThrownBy(() -> service.request(req))
+                .isInstanceOf(ForbiddenException.class);
+        verify(events, never()).publishEvent(any());
+    }
+
     // ── approve ──────────────────────────────────────────────────────
 
     @Test
