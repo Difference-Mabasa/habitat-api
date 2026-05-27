@@ -358,6 +358,13 @@ public class PropertyService {
         if (publishable == 0) {
             throw new ConflictException(ErrorMessages.PROPERTY_NEEDS_UNIT_BEFORE_PUBLISH);
         }
+        // Agent-managed listings can carry a null fee while in
+        // DRAFT (the wizard's mandate step fills it in), but
+        // publishing without a fee is incoherent.
+        if (p.getListingMode() == ListingMode.AGENT_MANAGED
+                && p.getMandateFeePercent() == null) {
+            throw new ConflictException(ErrorMessages.MANDATE_FEE_REQUIRED);
+        }
         p.setStatus(PropertyStatus.LISTED);
         log.info("property {} published by user {}", p.getId(), security.requireUserId());
         events.publishEvent(new com.habitat.api.event.PropertyPublishedEvent(p.getId()));
@@ -521,14 +528,14 @@ public class PropertyService {
     }
 
     /**
-     * Reject an inconsistent (mode, fee) pair. AGENT_MANAGED demands a
-     * fee; LANDLORD_DIRECT must not carry one. The wizard's UI prevents
-     * the bad pairing but a JSON caller could still send it.
+     * Reject an inconsistent (mode, fee) pair on create/update.
+     * LANDLORD_DIRECT must not carry a fee. AGENT_MANAGED is allowed
+     * to have a null fee while the listing is still a DRAFT — the
+     * fee lands later on the wizard's Mandate step. The
+     * "AGENT_MANAGED requires a fee" rule is enforced at
+     * {@link #publish}, where it's actually load-bearing.
      */
     private static void validateMandatePair(ListingMode mode, BigDecimal fee) {
-        if (mode == ListingMode.AGENT_MANAGED && fee == null) {
-            throw new ForbiddenException(ErrorMessages.MANDATE_FEE_REQUIRED);
-        }
         if (mode == ListingMode.LANDLORD_DIRECT && fee != null && fee.signum() != 0) {
             throw new ForbiddenException(ErrorMessages.MANDATE_FEE_DISALLOWED);
         }
