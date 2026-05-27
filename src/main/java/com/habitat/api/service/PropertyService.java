@@ -67,6 +67,7 @@ public class PropertyService {
     private final PropertyRequiredDocumentRepository requiredDocs;
     private final AmenityRepository amenities;
     private final SecurityUtils security;
+    private final LandlordService landlordService;
 
     public enum SortKey {
         NEWEST, PRICE, BEDROOMS, SIZE
@@ -273,8 +274,16 @@ public class PropertyService {
         ListingMode mode = req.listingMode() == null ? ListingMode.LANDLORD_DIRECT : req.listingMode();
         validateMandatePair(mode, req.mandateFeePercent());
 
+        // LANDLORD_DIRECT: caller IS the owner → resolve a Landlord
+        // row for them up-front. AGENT_MANAGED: owner identity is
+        // captured at mandate-issue time, so landlord stays null
+        // until then.
+        var landlord = mode == ListingMode.LANDLORD_DIRECT
+                ? landlordService.findOrCreateForUser(user)
+                : null;
+
         Property p = Property.builder()
-                .landlord(user)
+                .landlord(landlord)
                 .manager(user)
                 .title(req.title().trim())
                 .description(blankToNull(req.description()))
@@ -423,6 +432,22 @@ public class PropertyService {
         return PageResponse.from(p.map(PropertyDetailResponse::from));
     }
 
+    /**
+     * Properties the caller legally owns — joined through Landlord so
+     * an online owner sees their agent-managed listings even though
+     * the agent is the manager. LANDLORD_DIRECT properties show up
+     * here too (the caller is both manager and owner). Offline
+     * landlords return nothing — by definition they have no Habitat
+     * account.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<PropertyDetailResponse> listOwnedByMe(int page, int size) {
+        UUID me = security.requireUserId();
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 100)));
+        Page<Property> p = properties.findByLandlord_User_IdOrderByCreatedAtDesc(me, pageable);
+        return PageResponse.from(p.map(PropertyDetailResponse::from));
+    }
+
     @Transactional
     public void delete(UUID id) {
         Property p = findOrThrow(id);
@@ -473,8 +498,14 @@ public class PropertyService {
         UUID me = security.currentUserId().orElse(null);
         if (me == null) return false;
         boolean isManager = p.getManager() != null && me.equals(p.getManager().getId());
-        boolean isLandlord = p.getLandlord() != null && me.equals(p.getLandlord().getId());
-        return isManager || isLandlord;
+        // Owner == the Habitat user behind the Landlord row, when one
+        // exists. Offline owners have no user so they can't edit via
+        // this path — the agent (manager) edits on their behalf.
+        var landlord = p.getLandlord();
+        boolean isOwner = landlord != null
+                && landlord.getUser() != null
+                && me.equals(landlord.getUser().getId());
+        return isManager || isOwner;
     }
 
     public void requireCanEdit(Property p) {

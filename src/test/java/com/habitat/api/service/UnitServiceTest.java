@@ -3,10 +3,12 @@ package com.habitat.api.service;
 import com.habitat.api.constants.ErrorMessages;
 import com.habitat.api.dto.property.UnitResponse;
 import com.habitat.api.dto.property.UpdateUnitRequest;
+import com.habitat.api.entity.Landlord;
 import com.habitat.api.entity.Property;
 import com.habitat.api.entity.Unit;
 import com.habitat.api.entity.User;
 import com.habitat.api.entity.base.BaseEntity;
+import com.habitat.api.enums.LandlordType;
 import com.habitat.api.enums.PaymentFrequency;
 import com.habitat.api.enums.PropertyStatus;
 import com.habitat.api.enums.PropertyType;
@@ -124,8 +126,10 @@ class UnitServiceTest {
                 .build();
         setId(owner, OWNER_ID);
 
+        Landlord ownerLandlord = Landlord.builder()
+                .type(LandlordType.ONLINE).user(owner).build();
         Property p = Property.builder()
-                .landlord(owner)
+                .landlord(ownerLandlord)
                 .manager(owner)
                 .title("Property")
                 .propertyType(PropertyType.HOUSE)

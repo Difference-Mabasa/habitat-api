@@ -9,10 +9,12 @@ import com.habitat.api.dto.property.PropertyDetailResponse;
 import com.habitat.api.dto.property.PropertySummary;
 import com.habitat.api.dto.property.UnitResponse;
 import com.habitat.api.dto.property.UpdatePropertyRequest;
+import com.habitat.api.entity.Landlord;
 import com.habitat.api.entity.Property;
 import com.habitat.api.entity.Unit;
 import com.habitat.api.entity.User;
 import com.habitat.api.entity.base.BaseEntity;
+import com.habitat.api.enums.LandlordType;
 import com.habitat.api.enums.PaymentFrequency;
 import com.habitat.api.enums.PropertyStatus;
 import com.habitat.api.enums.PropertyType;
@@ -61,6 +63,7 @@ class PropertyServiceTest {
     @Mock com.habitat.api.repository.PropertyRequiredDocumentRepository requiredDocs;
     @Mock com.habitat.api.repository.AmenityRepository amenities;
     @Mock SecurityUtils security;
+    @Mock LandlordService landlordService;
     @InjectMocks PropertyService service;
 
     private static final UUID OWNER_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
@@ -364,11 +367,15 @@ class PropertyServiceTest {
     // ── create ────────────────────────────────────────────────────────
 
     @Test
-    void create_persists_with_caller_as_landlord_and_manager() {
+    void create_persists_with_caller_as_landlord_and_manager_for_landlord_direct() {
         User caller = userWithId(OWNER_ID);
+        Landlord callerLandlord = Landlord.builder()
+                .type(LandlordType.ONLINE).user(caller).build();
         when(security.requireUserId()).thenReturn(OWNER_ID);
         when(users.findById(OWNER_ID)).thenReturn(Optional.of(caller));
+        when(landlordService.findOrCreateForUser(caller)).thenReturn(callerLandlord);
 
+        // listingMode defaults to LANDLORD_DIRECT when omitted on the request.
         CreatePropertyRequest req = new CreatePropertyRequest(
                 "Sandton Villa", "  ", PropertyType.HOUSE,
                 "5 Rivonia Rd", "Sandton", "Johannesburg", "Gauteng", "2196",
@@ -385,14 +392,43 @@ class PropertyServiceTest {
         assertThat(saved.getDescription()).isNull();  // blank trimmed to null
         assertThat(saved.getPropertyType()).isEqualTo(PropertyType.HOUSE);
         assertThat(saved.getStatus()).isEqualTo(PropertyStatus.DRAFT);
-        assertThat(saved.getLandlord()).isSameAs(caller);
+        // landlord_id now points at a Landlord (not the User directly);
+        // the linked User behind it is the caller for LANDLORD_DIRECT.
+        assertThat(saved.getLandlord()).isSameAs(callerLandlord);
+        assertThat(saved.getLandlord().getUser()).isSameAs(caller);
         assertThat(saved.getManager()).isSameAs(caller);
+    }
+
+    @Test
+    void create_leaves_landlord_null_for_agent_managed_until_mandate_issue() {
+        User caller = userWithId(OWNER_ID);
+        when(security.requireUserId()).thenReturn(OWNER_ID);
+        when(users.findById(OWNER_ID)).thenReturn(Optional.of(caller));
+
+        CreatePropertyRequest req = new CreatePropertyRequest(
+                "Sandton Villa", null, PropertyType.HOUSE,
+                "5 Rivonia Rd", "Sandton", "Johannesburg", "Gauteng", "2196",
+                -26.1, 28.0,
+                com.habitat.api.enums.ListingMode.AGENT_MANAGED, new BigDecimal("8.0")
+        );
+
+        service.create(req);
+
+        ArgumentCaptor<Property> captor = ArgumentCaptor.forClass(Property.class);
+        verify(properties).save(captor.capture());
+        Property saved = captor.getValue();
+        // Owner identity comes from the mandate flow, not the
+        // create call — landlord stays null until MandateService.issue.
+        assertThat(saved.getLandlord()).isNull();
+        assertThat(saved.getManager()).isSameAs(caller);
+        verify(landlordService, never()).findOrCreateForUser(any());
     }
 
     @Test
     void create_throws_when_caller_user_not_found() {
         when(security.requireUserId()).thenReturn(OWNER_ID);
         when(users.findById(OWNER_ID)).thenReturn(Optional.empty());
+        // landlordService is never reached when the caller user is missing.
 
         CreatePropertyRequest req = new CreatePropertyRequest(
                 "Sandton Villa", null, PropertyType.HOUSE,
@@ -554,8 +590,12 @@ class PropertyServiceTest {
 
     private Property propertyWith(String title, PropertyStatus status, String suburb) {
         User owner = userWithId(OWNER_ID);
+        Landlord ownerLandlord = Landlord.builder()
+                .type(LandlordType.ONLINE)
+                .user(owner)
+                .build();
         Property p = Property.builder()
-                .landlord(owner)
+                .landlord(ownerLandlord)
                 .manager(owner)
                 .title(title)
                 .propertyType(PropertyType.HOUSE)

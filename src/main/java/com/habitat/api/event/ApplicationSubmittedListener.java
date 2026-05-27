@@ -3,7 +3,9 @@ package com.habitat.api.event;
 import com.habitat.api.constants.NotificationMessages;
 import com.habitat.api.constants.TemplatePlaceholders;
 import com.habitat.api.entity.Application;
+import com.habitat.api.entity.Landlord;
 import com.habitat.api.entity.User;
+import com.habitat.api.enums.LandlordType;
 import com.habitat.api.enums.NotificationType;
 import com.habitat.api.repository.ApplicationRepository;
 import com.habitat.api.service.NotificationService;
@@ -58,10 +60,16 @@ public class ApplicationSubmittedListener {
         var property = unit.getProperty();
         var tenant = application.getTenant();
         var manager = property.getManager();
-        var landlord = property.getLandlord();
+        Landlord landlord = property.getLandlord();
+        // Notify the owner-User only when the landlord has a Habitat
+        // account. Offline landlords can't receive in-app pushes — the
+        // manager (agent) sees the notification and relays out-of-band.
+        User landlordUser = landlord != null && landlord.getType() == LandlordType.ONLINE
+                ? landlord.getUser()
+                : null;
 
         String tenantName = displayName(tenant);
-        String landlordName = displayName(manager == null ? landlord : manager);
+        String landlordName = landlord == null ? displayName(manager) : landlord.displayName();
         String unitTitle = unit.getTitle() == null ? "the unit" : unit.getTitle();
         String propertyTitle = property.getTitle() == null ? "the property" : property.getTitle();
 
@@ -79,10 +87,12 @@ public class ApplicationSubmittedListener {
                     application.getId());
         }
 
-        // Landlord too, if distinct from the manager (agent-managed case).
-        if (landlord != null
-                && (manager == null || !managerEquals(manager.getId(), landlord.getId()))) {
-            tryPush(landlord, NotificationType.APPLICATION_RECEIVED,
+        // Landlord too, if they have a Habitat account and aren't the
+        // same User as the manager (agent-managed case with an online
+        // landlord). Offline landlords are notified via the manager.
+        if (landlordUser != null
+                && (manager == null || !managerEquals(manager.getId(), landlordUser.getId()))) {
+            tryPush(landlordUser, NotificationType.APPLICATION_RECEIVED,
                     NotificationMessages.APPLICATION_RECEIVED_TITLE,
                     TemplateUtils.format(
                             NotificationMessages.APPLICATION_RECEIVED_BODY,

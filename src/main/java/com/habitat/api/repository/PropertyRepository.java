@@ -68,6 +68,16 @@ public interface PropertyRepository extends JpaRepository<Property, UUID> {
     Page<Property> findByManagerIdOrderByCreatedAtDesc(UUID managerId, Pageable pageable);
 
     /**
+     * Properties owned by the given Habitat user — joins through the
+     * Landlord entity to surface listings where the user is the
+     * legal owner regardless of who the manager is. Drives the
+     * landlord workspace's "Properties I own" view so an online owner
+     * sees their agent-managed listings without the agent's manager-
+     * keyed query having to know about them.
+     */
+    Page<Property> findByLandlord_User_IdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
+
+    /**
      * Suburbs with the most LISTED properties — drives the "Popular: …"
      * line on the landing page. Returns one row per non-blank suburb,
      * ordered by listing count desc with the suburb name as a tiebreaker

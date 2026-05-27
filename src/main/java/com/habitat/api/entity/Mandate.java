@@ -25,6 +25,12 @@ import java.time.OffsetDateTime;
  * Agent-landlord mandate on an agent-managed property. Online
  * landlords approve in-app; offline landlords sign a PDF the agent
  * emails them. See {@link MandateStatus} for the state machine.
+ *
+ * <p>Landlord identity isn't carried directly here — it lives on
+ * {@code property.landlord} (a {@link Landlord} row) which the mandate
+ * issue flow resolves via {@code LandlordService.resolveForMandate}.
+ * That keeps the same identity across multiple mandates and across
+ * the offline → online flip.
  */
 @Getter
 @Setter
@@ -43,20 +49,6 @@ public class Mandate extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "agent_user_id", nullable = false)
     private User agent;
-
-    /** Online landlord. Null when the mandate carries the offline fields. */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "landlord_user_id")
-    private User landlordUser;
-
-    @Column(name = "offline_landlord_name", length = 200)
-    private String offlineLandlordName;
-
-    @Column(name = "offline_landlord_email", length = 255)
-    private String offlineLandlordEmail;
-
-    @Column(name = "offline_landlord_phone", length = 50)
-    private String offlineLandlordPhone;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "mandate_type", nullable = false, length = 40)

@@ -1,5 +1,6 @@
 package com.habitat.api.dto.property;
 
+import com.habitat.api.dto.landlord.LandlordRef;
 import com.habitat.api.entity.Property;
 import com.habitat.api.enums.DocumentType;
 import com.habitat.api.enums.ListingMode;
@@ -31,6 +32,12 @@ public record PropertyDetailResponse(
         Double longitude,
         UUID landlordId,
         UUID managerId,
+        /** Owner identity behind the landlord_id FK. Null when the
+         *  property is an AGENT_MANAGED draft with no mandate yet, in
+         *  which case no owner has been attributed. For LANDLORD_DIRECT
+         *  the owner mirrors the manager; for AGENT_MANAGED it's
+         *  whoever the mandate captured. */
+        LandlordRef owner,
         /** Minimal manager identity for the "Listed by" card; null when no manager set. */
         ManagerRef manager,
         List<PropertyImageResponse> images,
@@ -78,6 +85,7 @@ public record PropertyDetailResponse(
                 p.getLongitude(),
                 p.getLandlord() == null ? null : p.getLandlord().getId(),
                 p.getManager() == null ? null : p.getManager().getId(),
+                LandlordRef.from(p.getLandlord()),
                 ManagerRef.from(p.getManager()),
                 p.getImages().stream().map(PropertyImageResponse::from).toList(),
                 p.getUnits().stream().map(UnitResponse::from).toList(),

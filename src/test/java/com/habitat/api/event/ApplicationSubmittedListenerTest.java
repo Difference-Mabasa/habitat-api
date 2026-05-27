@@ -2,10 +2,12 @@ package com.habitat.api.event;
 
 import com.habitat.api.dto.notification.PushResult;
 import com.habitat.api.entity.Application;
+import com.habitat.api.entity.Landlord;
 import com.habitat.api.entity.Property;
 import com.habitat.api.entity.Unit;
 import com.habitat.api.entity.User;
 import com.habitat.api.enums.ApplicationStatus;
+import com.habitat.api.enums.LandlordType;
 import com.habitat.api.enums.NotificationType;
 import com.habitat.api.enums.UnitStatus;
 import com.habitat.api.repository.ApplicationRepository;
@@ -90,6 +92,34 @@ class ApplicationSubmittedListenerTest {
     }
 
     @Test
+    void notifies_manager_only_when_landlord_is_offline() {
+        // Agent-managed listing with an OFFLINE landlord — they have
+        // no Habitat user to receive a push, so only the manager
+        // (agent) gets notified. The agent's job is to relay
+        // out-of-band.
+        User manager  = user(MGR_ID, "Pieter", "Agent");
+        User tenant   = user(TENANT_ID, "Sipho", "Khumalo");
+        Landlord offlineOwner = offlineLandlord(manager, "Thandi", "Vilakazi", "thandi@example.co.za");
+        Application app = applicationWith(offlineOwner, manager, tenant);
+        when(applications.findById(APP_ID)).thenReturn(Optional.of(app));
+        when(notifications.push(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PushResult(Map.of()));
+
+        listener.onApplicationSubmitted(new ApplicationSubmittedEvent(APP_ID));
+
+        // Manager + tenant only — no APPLICATION_RECEIVED to a User
+        // owner because the landlord row has no linked user.
+        verify(notifications, times(1))
+                .push(eq(manager), eq(NotificationType.APPLICATION_RECEIVED),
+                        any(), any(), any(), any(), eq(APP_ID));
+        verify(notifications)
+                .push(eq(tenant), eq(NotificationType.APPLICATION_SUBMITTED_TENANT),
+                        any(), any(), any(), any(), eq(APP_ID));
+        verify(notifications, times(2))
+                .push(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     void skips_silently_when_application_vanishes() {
         when(applications.findById(APP_ID)).thenReturn(Optional.empty());
         listener.onApplicationSubmitted(new ApplicationSubmittedEvent(APP_ID));
@@ -114,6 +144,10 @@ class ApplicationSubmittedListenerTest {
     // ── Helpers ────────────────────────────────────────────────────────
 
     private Application applicationWith(User landlord, User manager, User tenant) {
+        return applicationWith(onlineLandlord(landlord), manager, tenant);
+    }
+
+    private Application applicationWith(Landlord landlord, User manager, User tenant) {
         Property property = Property.builder()
                 .landlord(landlord)
                 .manager(manager)
@@ -134,6 +168,18 @@ class ApplicationSubmittedListenerTest {
                 .build();
         setId(app, APP_ID);
         return app;
+    }
+
+    private static Landlord onlineLandlord(User u) {
+        return Landlord.builder().type(LandlordType.ONLINE).user(u).build();
+    }
+
+    private static Landlord offlineLandlord(User creatorAgent, String first, String last, String email) {
+        return Landlord.builder()
+                .type(LandlordType.OFFLINE)
+                .createdByAgent(creatorAgent)
+                .firstName(first).lastName(last).email(email)
+                .build();
     }
 
     private static User user(UUID id, String first, String last) {

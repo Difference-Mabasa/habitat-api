@@ -79,8 +79,9 @@ public class PropertyController {
     }
 
     /**
-     * Caller's managed listings (any status). Powers the landlord
-     * dashboard at /landlord-properties.
+     * Caller's managed listings (any status). Powers the agent's
+     * /portfolio view; LANDLORD_DIRECT properties also surface here
+     * since the owner is also the manager.
      */
     @GetMapping("/managed-by-me")
     public PageResponse<PropertyDetailResponse> listManagedByMe(
@@ -88,6 +89,19 @@ public class PropertyController {
             @RequestParam(defaultValue = "20") int size
     ) {
         return properties.listManagedByMe(page, size);
+    }
+
+    /**
+     * Properties the caller legally owns — joins through Landlord so
+     * an online owner sees their agent-managed listings. Powers the
+     * landlord workspace's /landlord-properties view.
+     */
+    @GetMapping("/owned-by-me")
+    public PageResponse<PropertyDetailResponse> listOwnedByMe(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return properties.listOwnedByMe(page, size);
     }
 
     @GetMapping("/{id}")

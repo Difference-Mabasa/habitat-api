@@ -1,8 +1,10 @@
 package com.habitat.api.service;
 
+import com.habitat.api.entity.Landlord;
 import com.habitat.api.entity.Mandate;
 import com.habitat.api.entity.Property;
 import com.habitat.api.entity.User;
+import com.habitat.api.enums.LandlordType;
 import com.habitat.api.enums.MandateStatus;
 import com.habitat.api.enums.MandateType;
 import org.junit.jupiter.api.Test;
@@ -17,7 +19,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Mirrors {@link LeasePdfServiceTest}: prove openhtmltopdf wiring
  * produces a real PDF, and cover the sig-stamp branches so the offline
- * / online / awaiting paths each render the matching label.
+ * / online / awaiting paths each render the matching label. Landlord
+ * identity now lives on {@code property.landlord} (a Landlord entity)
+ * — the mandate itself no longer carries name / email / phone.
  */
 class MandatePdfServiceTest {
 
@@ -56,9 +60,8 @@ class MandatePdfServiceTest {
     @Test
     void renderHtml_online_active_shows_approved_sast_stamp() {
         Mandate m = offlineMandate();
-        m.setOfflineLandlordName(null);
-        m.setOfflineLandlordEmail(null);
-        m.setLandlordUser(landlordUser());
+        // Swap the property's landlord to an ONLINE row backed by a User.
+        m.getProperty().setLandlord(onlineLandlord());
         m.setStatus(MandateStatus.ACTIVE);
         setField(m, "updatedAt", OffsetDateTime.parse("2026-05-22T09:30:00Z"));
 
@@ -93,9 +96,6 @@ class MandatePdfServiceTest {
 
     @Test
     void renderHtml_wears_the_shared_specimen_chrome() {
-        // Spot-checks the design-locked elements: rotated SPECIMEN
-        // watermark, HABI/TAT wordmark + hex logo, slate body palette,
-        // and the page-of footer with the hb.co.za short URL.
         String html = renderHtml(offlineMandate());
         assertThat(html).contains(">HABI<");
         assertThat(html).contains(">TAT<");
@@ -120,20 +120,33 @@ class MandatePdfServiceTest {
         Property property = withId(Property.builder().title("Olive Court")
                 .addressLine("12 Olive Rd").suburb("Yeoville").city("Joburg")
                 .postalCode("2198").build(), UUID.randomUUID());
+        property.setLandlord(offlineLandlord(agent));
         return withId(Mandate.builder()
                 .property(property)
                 .agent(agent)
-                .offlineLandlordName("Thandi Vilakazi")
-                .offlineLandlordEmail("thandi@example.co.za")
                 .mandateType(MandateType.FULL_MANAGEMENT)
                 .status(MandateStatus.PENDING_OFFLINE_SIGNATURE)
                 .feePercent(new BigDecimal("8.5"))
                 .build(), UUID.randomUUID());
     }
 
-    private static User landlordUser() {
-        return User.builder().firstName("Thandi").surname("Vilakazi")
+    private static Landlord offlineLandlord(User creatorAgent) {
+        return Landlord.builder()
+                .type(LandlordType.OFFLINE)
+                .createdByAgent(creatorAgent)
+                .firstName("Thandi")
+                .lastName("Vilakazi")
+                .email("thandi@example.co.za")
+                .build();
+    }
+
+    private static Landlord onlineLandlord() {
+        User u = User.builder().firstName("Thandi").surname("Vilakazi")
                 .email("thandi@example.co.za").build();
+        return Landlord.builder()
+                .type(LandlordType.ONLINE)
+                .user(u)
+                .build();
     }
 
     private static <T> T withId(T entity, UUID id) {

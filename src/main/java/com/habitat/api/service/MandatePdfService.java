@@ -1,8 +1,10 @@
 package com.habitat.api.service;
 
+import com.habitat.api.entity.Landlord;
 import com.habitat.api.entity.Mandate;
 import com.habitat.api.entity.Property;
 import com.habitat.api.entity.User;
+import com.habitat.api.enums.LandlordType;
 import com.habitat.api.enums.MandateStatus;
 import com.habitat.api.enums.MandateType;
 import lombok.RequiredArgsConstructor;
@@ -79,7 +81,10 @@ public final class MandatePdfService {
         if (m.getSignedDocumentPath() != null) {
             return "Landlord · signed " + formatStamp(when);
         }
-        if (m.getLandlordUser() != null && m.getStatus() == MandateStatus.ACTIVE) {
+        Landlord landlord = landlordOf(m);
+        if (landlord != null
+                && landlord.getType() == LandlordType.ONLINE
+                && m.getStatus() == MandateStatus.ACTIVE) {
             return "Landlord · approved " + formatStamp(when);
         }
         return "Landlord · awaiting signature";
@@ -101,9 +106,16 @@ public final class MandatePdfService {
      * stays clean.
      */
     private static String landlordSigName(Mandate m, String landlordName) {
+        Landlord landlord = landlordOf(m);
         boolean signed = m.getSignedDocumentPath() != null
-                || (m.getLandlordUser() != null && m.getStatus() == MandateStatus.ACTIVE);
+                || (landlord != null
+                        && landlord.getType() == LandlordType.ONLINE
+                        && m.getStatus() == MandateStatus.ACTIVE);
         return signed ? sigGlyph(landlordName) : "";
+    }
+
+    private static Landlord landlordOf(Mandate m) {
+        return m.getProperty() == null ? null : m.getProperty().getLandlord();
     }
 
     private static String agentSigName(Mandate m, String agentName) {
@@ -140,8 +152,9 @@ public final class MandatePdfService {
     }
 
     private static String deriveLandlordName(Mandate m) {
-        if (m.getLandlordUser() != null) return displayName(m.getLandlordUser());
-        return nullSafe(m.getOfflineLandlordName());
+        Landlord landlord = landlordOf(m);
+        if (landlord == null) return "—";
+        return landlord.displayName();
     }
 
     private static String labelFor(MandateType type) {

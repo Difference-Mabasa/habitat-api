@@ -41,7 +41,12 @@ public final class ApiRoutes {
     public static final String PROPERTIES = BASE + "/properties";
     public static final String PROPERTIES_POPULAR_AREAS = PROPERTIES + "/popular-areas";
     public static final String PROPERTIES_TOP_RATED = PROPERTIES + "/top-rated";
+    public static final String PROPERTIES_OWNED_BY_ME = PROPERTIES + "/owned-by-me";
     public static final String UNITS = BASE + "/units";
+
+    // Landlords — distinct identity from User. See entity Landlord.java.
+    public static final String LANDLORDS = BASE + "/landlords";
+    public static final String LANDLORDS_LOOKUP = LANDLORDS + "/lookup";
 
     // Applications
     public static final String APPLICATIONS = BASE + "/applications";

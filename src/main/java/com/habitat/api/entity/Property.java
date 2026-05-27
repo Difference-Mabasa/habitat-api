@@ -36,10 +36,16 @@ import java.util.Set;
  *
  * Roles (carried from backroom semantics):
  * <ul>
- *   <li>{@code landlord} — registered legal owner. Always a {@link User}.</li>
- *   <li>{@code manager} — platform contact on the listing. May be the
- *       landlord or their agent. Denormalised onto units for query speed
- *       (kept in sync at the service layer when changed).</li>
+ *   <li>{@code landlord} — registered legal owner of the property.
+ *       Points at a {@link Landlord}, not directly at {@link User}, so
+ *       offline owners (no Habitat account) are first-class. Nullable
+ *       only transitionally for AGENT_MANAGED drafts before the
+ *       mandate-step captures owner identity — set in
+ *       {@code MandateService.issue} or, for LANDLORD_DIRECT, at
+ *       property-create time.</li>
+ *   <li>{@code manager} — platform contact on the listing. The
+ *       caller of {@code POST /properties} — may be the landlord
+ *       (LANDLORD_DIRECT) or their agent (AGENT_MANAGED).</li>
  * </ul>
  */
 @Entity
@@ -52,9 +58,9 @@ import java.util.Set;
 @SQLRestriction("deleted_at IS NULL")
 public class Property extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "landlord_id", nullable = false)
-    private User landlord;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "landlord_id")
+    private Landlord landlord;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "manager_id", nullable = false)

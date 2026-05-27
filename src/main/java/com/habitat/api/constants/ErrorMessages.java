@@ -32,16 +32,19 @@ public final class ErrorMessages {
     public static final String MANDATE_NOT_FOUND = "Mandate not found.";
     public static final String MANDATE_REQUIRES_AGENT_MODE =
             "Mandates only apply to agent-managed listings.";
-    public static final String MANDATE_LANDLORD_REQUIRED =
-            "Offline-flow mandates need at least a landlord name and email.";
     public static final String MANDATE_NOT_READY_FOR_UPLOAD =
             "A signed mandate can only be uploaded after issue.";
     public static final String MANDATE_PDF_NOT_READY =
             "The mandate PDF hasn't been generated yet.";
     public static final String MANDATE_SIGNED_NOT_AVAILABLE =
             "No signed mandate has been uploaded yet.";
-    public static final String LANDLORD_EMAIL_NOT_ON_HABITAT =
-            "That email isn't registered on Habitat. Switch off \"Landlord is on Habitat\" to use the offline-sign flow, or ask the landlord to register first.";
+    public static final String LANDLORD_ID_NUMBER_INVALID =
+            "That SA ID number doesn't pass the Luhn check. Double-check the 13 digits.";
+    public static final String LANDLORD_NOT_FOUND = "Landlord not found.";
+    public static final String LANDLORD_EDIT_FORBIDDEN =
+            "Only the agent who first captured this landlord can change their details. Request an update via the inbox.";
+    public static final String LANDLORD_REQUIRED_FIELDS =
+            "Offline landlord capture needs at least a first name, last name, email, and ID number.";
     public static final String UNIT_NOT_FOUND = "Unit not found.";
     public static final String UNIT_NOT_AVAILABLE = "This unit isn't accepting applications right now.";
     public static final String APPLICATION_ALREADY_SUBMITTED = "You've already applied for this unit.";

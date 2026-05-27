@@ -4,12 +4,13 @@ import com.habitat.api.constants.ErrorMessages;
 import com.habitat.api.constants.StorageConstants;
 import com.habitat.api.dto.mandate.IssueMandateRequest;
 import com.habitat.api.dto.mandate.MandateResponse;
+import com.habitat.api.entity.Landlord;
 import com.habitat.api.entity.Mandate;
 import com.habitat.api.entity.Property;
 import com.habitat.api.entity.User;
+import com.habitat.api.enums.LandlordType;
 import com.habitat.api.enums.ListingMode;
 import com.habitat.api.enums.MandateStatus;
-import com.habitat.api.exception.BadRequestException;
 import com.habitat.api.exception.ConflictException;
 import com.habitat.api.exception.ResourceNotFoundException;
 import com.habitat.api.repository.MandateRepository;
@@ -29,19 +30,21 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Mandate lifecycle for agent-managed listings. Online vs. offline
- * landlord flow is decided at issue time:
+ * Mandate lifecycle for agent-managed listings. Landlord identity is
+ * resolved via {@link LandlordService} (find-or-create by SA ID) and
+ * pinned onto {@code property.landlord}, so subsequent mandates on
+ * the same property pick up the same Landlord row. Online vs offline
+ * flow is then decided by the resolved Landlord's type:
  *
  * <ul>
- *   <li>If {@code landlordEmail} resolves to an existing Habitat user
- *       we attach them as {@code landlordUser} and the status becomes
- *       {@code PENDING_LANDLORD_APPROVAL}. The mandate-approval UI
- *       (Phase 12 expansion) flips it to {@code ACTIVE}.</li>
- *   <li>Otherwise the offline fields carry the landlord's identity.
- *       Status becomes {@code PENDING_OFFLINE_SIGNATURE}; the agent
+ *   <li>{@code ONLINE} — the captured email matched a Habitat user
+ *       (or the ID number matched an already-online row); status
+ *       becomes {@code PENDING_LANDLORD_APPROVAL}.</li>
+ *   <li>{@code OFFLINE} — captured contact details only; status
+ *       becomes {@code PENDING_OFFLINE_SIGNATURE}. The agent
  *       downloads the generated PDF, emails it to the landlord (or
  *       hands it over), then re-uploads the signed version via
- *       {@link #uploadSigned}. That flips status to
+ *       {@link #uploadSigned}, which flips status to
  *       {@code PENDING_AGENT_ACCEPTANCE}.</li>
  * </ul>
  *
@@ -59,6 +62,7 @@ public class MandateService {
     private final PropertyRepository properties;
     private final UserRepository users;
     private final PropertyService propertyService;
+    private final LandlordService landlordService;
     private final MandatePdfService mandatePdf;
     private final StorageService storage;
     private final SecurityUtils security;
@@ -96,34 +100,24 @@ public class MandateService {
         User agent = users.findById(agentId)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.USER_NOT_FOUND));
 
-        // Flow discriminator: a landlordName means the wizard's
-        // "Landlord is on Habitat" toggle was OFF (offline flow). The
-        // online flow expects the email to resolve to an existing
-        // Habitat user — anything else is a hard error so the agent
-        // can correct the email before publishing rather than silently
-        // falling back to the offline flow with the wrong name.
-        final boolean offlineFlow =
-                req.landlordName() != null && !req.landlordName().isBlank();
+        // Resolve the Landlord row first — find-or-create by SA ID,
+        // then fall back to email-matched user (ONLINE) or captured
+        // fields (OFFLINE). Pinning it on the property happens before
+        // we build the mandate row so a downstream failure (e.g. PDF
+        // render) leaves the landlord linked for the retry.
+        Landlord landlord = landlordService.resolveForMandate(
+                new LandlordService.MandateLandlordCapture(
+                        req.landlordIdNumber(),
+                        req.landlordFirstName(),
+                        req.landlordLastName(),
+                        req.landlordEmail(),
+                        req.landlordPhone()));
+        p.setLandlord(landlord);
 
-        if (req.landlordEmail() == null || req.landlordEmail().isBlank()) {
-            throw new BadRequestException(ErrorMessages.MANDATE_LANDLORD_REQUIRED);
-        }
-
-        User landlordUser = null;
-        if (!offlineFlow) {
-            landlordUser = users.findByEmailIgnoreCase(req.landlordEmail())
-                    .orElseThrow(() -> new BadRequestException(
-                            ErrorMessages.LANDLORD_EMAIL_NOT_ON_HABITAT));
-        }
-        final boolean online = !offlineFlow;
-
+        boolean online = landlord.getType() == LandlordType.ONLINE;
         Mandate mandate = Mandate.builder()
                 .property(p)
                 .agent(agent)
-                .landlordUser(landlordUser)
-                .offlineLandlordName(online ? null : req.landlordName())
-                .offlineLandlordEmail(online ? null : req.landlordEmail())
-                .offlineLandlordPhone(online ? null : req.landlordPhone())
                 .mandateType(req.mandateType())
                 .status(online
                         ? MandateStatus.PENDING_LANDLORD_APPROVAL
@@ -193,9 +187,8 @@ public class MandateService {
         if (m.getMandateDocumentPath() == null) {
             throw new ConflictException(ErrorMessages.MANDATE_PDF_NOT_READY);
         }
-        String email = m.getLandlordUser() != null
-                ? m.getLandlordUser().getEmail()
-                : m.getOfflineLandlordEmail();
+        var landlord = m.getProperty() == null ? null : m.getProperty().getLandlord();
+        String email = landlord == null ? null : landlord.resolvedEmail();
         log.info("[mandate-email stub] would email mandate {} to {}", m.getId(), email);
         // Real delivery: Resend integration ships in Phase 8.
     }

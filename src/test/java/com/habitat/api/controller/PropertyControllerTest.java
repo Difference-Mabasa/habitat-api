@@ -255,12 +255,16 @@ class PropertyControllerTest {
 
     private static PropertyDetailResponse sampleDetail() {
         UUID landlordId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+        UUID userId = UUID.fromString("11111111-2222-3333-4444-555555555555");
         return new PropertyDetailResponse(
                 PROP_ID, "Sandton Villa", null, PropertyType.HOUSE, PropertyStatus.LISTED,
                 "5 Rivonia Rd", "Sandton", "Johannesburg", "Gauteng", "2196",
                 -26.1, 28.0,
                 landlordId,
                 landlordId,
+                new com.habitat.api.dto.landlord.LandlordRef(
+                        landlordId, com.habitat.api.enums.LandlordType.ONLINE, userId,
+                        "Demo", "Owner", "demo@example.co.za", null, null),
                 new com.habitat.api.dto.property.ManagerRef(landlordId, "Demo", "Owner"),
                 List.of(), List.of(), OffsetDateTime.now(),
                 new BigDecimal("4.50"), 12,
