@@ -12,8 +12,10 @@
 --   AGENT_MANAGED draft, no mandate → properties.landlord_id stays NULL
 --                                  (the next mandate-issue sets it)
 
--- ── 1. Drop the old FK so we can repurpose the column ─────────────
+-- ── 1. Drop the old FK + relax the NOT NULL so the column can be
+--      blanked while we swap referents from users → landlords.
 ALTER TABLE properties DROP CONSTRAINT IF EXISTS fk_properties_landlord;
+ALTER TABLE properties ALTER COLUMN landlord_id DROP NOT NULL;
 
 -- ── 2. Stash legacy user_id so we can resolve it after we INSERT
 --      landlord rows. NULL out the column itself so the new FK we
@@ -123,12 +125,9 @@ WHERE p.id = m.property_id
   AND p.deleted_at IS NULL
   AND p.landlord_id IS NULL;
 
--- ── 7. New FK pointing at landlords. Column stays nullable so
---      AGENT_MANAGED drafts with no mandate (and any rows we
---      couldn't resolve) remain unattributed.
-ALTER TABLE properties
-    ALTER COLUMN landlord_id DROP NOT NULL;
-
+-- ── 7. New FK pointing at landlords. Column was already relaxed
+--      to nullable in step 1 so AGENT_MANAGED drafts with no
+--      mandate (and any rows we couldn't resolve) stay unattributed.
 ALTER TABLE properties
     ADD CONSTRAINT fk_properties_landlord
         FOREIGN KEY (landlord_id) REFERENCES landlords (id) ON DELETE RESTRICT;
