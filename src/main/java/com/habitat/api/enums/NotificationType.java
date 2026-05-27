@@ -105,6 +105,58 @@ public enum NotificationType {
      * the agent always; pushed to the landlord-User when ONLINE.
      */
     MANDATE_ACTIVE(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    // ── Application lifecycle ─────────────────────────────────────────
+
+    /**
+     * Tenant-side acknowledgement of an approval decision. Fires when
+     * an agent / landlord transitions the application to APPROVED via
+     * {@code ApplicationService.review}.
+     */
+    APPLICATION_APPROVED(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Tenant-side rejection acknowledgement. Includes the reviewer's
+     * decision note when set — helps the tenant adjust before
+     * applying elsewhere.
+     */
+    APPLICATION_REJECTED(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Tenant told their application has been parked. Usually means
+     * the landlord wants more info / fresher docs — the decision
+     * note carries the ask.
+     */
+    APPLICATION_ON_HOLD(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    // ── Viewing lifecycle ────────────────────────────────────────────
+
+    /**
+     * Manager (and online landlord if distinct) gets this when a
+     * tenant books a viewing slot. CTA goes to the manager's
+     * /viewings calendar.
+     */
+    VIEWING_REQUESTED(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /** Tenant-side confirmation that the requested slot is locked in. */
+    VIEWING_APPROVED(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /** Tenant-side decline acknowledgement — find another slot or property. */
+    VIEWING_REJECTED(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Either party cancelled an existing viewing. Recipient = the
+     * other party (the cancellation actor sees a toast, not a
+     * notification of their own action).
+     */
+    VIEWING_CANCELLED(NotificationCategory.MESSAGING,
             EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL));
 
     private final NotificationCategory category;

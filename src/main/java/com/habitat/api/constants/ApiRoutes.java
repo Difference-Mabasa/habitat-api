@@ -48,6 +48,11 @@ public final class ApiRoutes {
     public static final String LANDLORDS = BASE + "/landlords";
     public static final String LANDLORDS_LOOKUP = LANDLORDS + "/lookup";
 
+    // Viewings — tenant bookings, manager review/approval. See entity Viewing.java.
+    public static final String VIEWINGS = BASE + "/viewings";
+    public static final String VIEWINGS_MINE = VIEWINGS + "/mine";
+    public static final String VIEWINGS_MANAGED = VIEWINGS + "/managed";
+
     // Applications
     public static final String APPLICATIONS = BASE + "/applications";
 

@@ -30,6 +30,10 @@ public final class TemplatePlaceholders {
     public static final String P_PROPERTY_ADDRESS = "propertyAddress";
     public static final String P_FEE_PERCENT = "feePercent";
     public static final String P_MANDATE_TYPE = "mandateType";
+    // Application + viewing flow.
+    public static final String P_DECISION_NOTE = "decisionNote";
+    public static final String P_VIEWING_DATE = "viewingDate";
+    public static final String P_VIEWING_TIME = "viewingTime";
 
     private TemplatePlaceholders() {}
 }

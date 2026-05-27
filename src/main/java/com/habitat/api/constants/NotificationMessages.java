@@ -142,5 +142,68 @@ public final class NotificationMessages {
     public static final String MANDATE_ACTIVE_LANDLORD_ACTION_LABEL =
             "Open property";
 
+    // ── APPLICATION REVIEW ──────────────────────────────────────────────
+    public static final String APPLICATION_APPROVED_TITLE =
+            "Application approved";
+    public static final String APPLICATION_APPROVED_BODY =
+            "{landlordName} approved your application for {unitTitle} at "
+                    + "{propertyTitle}. Next step: the deposit invoice will land "
+                    + "in your inbox shortly — pay it to lock in move-in.";
+    public static final String APPLICATION_APPROVED_ACTION_LABEL =
+            "Open application";
+
+    public static final String APPLICATION_REJECTED_TITLE =
+            "Application not successful";
+    public static final String APPLICATION_REJECTED_BODY =
+            "{landlordName} reviewed your application for {unitTitle} at "
+                    + "{propertyTitle} and decided not to proceed. {decisionNote}";
+    public static final String APPLICATION_REJECTED_ACTION_LABEL =
+            "Find another spot";
+
+    public static final String APPLICATION_ON_HOLD_TITLE =
+            "Application paused — more info needed";
+    public static final String APPLICATION_ON_HOLD_BODY =
+            "{landlordName} put your application for {unitTitle} on hold. "
+                    + "{decisionNote} Reach out via the inbox or upload the "
+                    + "missing documents to get back on track.";
+    public static final String APPLICATION_ON_HOLD_ACTION_LABEL =
+            "Open application";
+
+    // ── VIEWING LIFECYCLE ───────────────────────────────────────────────
+    public static final String VIEWING_REQUESTED_TITLE =
+            "Viewing requested";
+    public static final String VIEWING_REQUESTED_BODY =
+            "{tenantName} wants to view {propertyTitle} on {viewingDate} at "
+                    + "{viewingTime}. Approve to confirm the slot, or decline "
+                    + "to suggest an alternative.";
+    public static final String VIEWING_REQUESTED_ACTION_LABEL =
+            "Review request";
+
+    public static final String VIEWING_APPROVED_TITLE =
+            "Viewing confirmed";
+    public static final String VIEWING_APPROVED_BODY =
+            "{landlordName} confirmed your viewing of {propertyTitle} on "
+                    + "{viewingDate} at {viewingTime}. The address + key details "
+                    + "are on your viewing card.";
+    public static final String VIEWING_APPROVED_ACTION_LABEL =
+            "View details";
+
+    public static final String VIEWING_REJECTED_TITLE =
+            "Viewing declined";
+    public static final String VIEWING_REJECTED_BODY =
+            "{landlordName} couldn't accommodate your viewing of {propertyTitle} "
+                    + "on {viewingDate} at {viewingTime}. Try a different slot — "
+                    + "their availability is on the property page.";
+    public static final String VIEWING_REJECTED_ACTION_LABEL =
+            "Pick a new slot";
+
+    public static final String VIEWING_CANCELLED_TITLE =
+            "Viewing cancelled";
+    public static final String VIEWING_CANCELLED_BODY =
+            "The {viewingDate} {viewingTime} viewing for {propertyTitle} has "
+                    + "been cancelled. Book another slot whenever works.";
+    public static final String VIEWING_CANCELLED_ACTION_LABEL =
+            "Open viewings";
+
     private NotificationMessages() {}
 }

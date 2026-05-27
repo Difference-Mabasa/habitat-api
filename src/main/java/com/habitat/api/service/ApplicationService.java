@@ -286,9 +286,16 @@ public class ApplicationService {
         // Approval fires an AFTER_COMMIT event; the InvoiceIssuanceListener
         // creates the invoice and bumps the application to INVOICE_SENT.
         // Decouples ApplicationService from InvoiceService (TECH_DEBT
-        // ARCH-03).
-        if (next == ApplicationStatus.APPROVED) {
-            events.publishEvent(new com.habitat.api.event.ApplicationApprovedEvent(applicationId));
+        // ARCH-03). The tenant-side notification fires off a parallel
+        // listener (ApplicationApprovedNotificationListener).
+        switch (next) {
+            case APPROVED -> events.publishEvent(
+                    new com.habitat.api.event.ApplicationApprovedEvent(applicationId));
+            case REJECTED -> events.publishEvent(
+                    new com.habitat.api.event.ApplicationRejectedEvent(applicationId));
+            case ON_HOLD -> events.publishEvent(
+                    new com.habitat.api.event.ApplicationOnHoldEvent(applicationId));
+            default -> { /* no event for other transitions in this flow */ }
         }
 
         log.info("application {} reviewed by {} → {}", applicationId, me, application.getStatus());

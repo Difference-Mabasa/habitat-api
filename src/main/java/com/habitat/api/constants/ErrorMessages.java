@@ -36,6 +36,13 @@ public final class ErrorMessages {
             "A signed mandate can only be uploaded after issue.";
     public static final String MANDATE_NOT_READY_FOR_LANDLORD_DECISION =
             "This mandate isn't awaiting your approval right now.";
+    public static final String VIEWING_NOT_FOUND = "Viewing not found.";
+    public static final String VIEWING_INVALID_TRANSITION =
+            "That viewing can't move to that state right now.";
+    public static final String VIEWING_SCHEDULED_AT_PAST =
+            "Viewings have to be scheduled in the future.";
+    public static final String VIEWING_UNIT_NOT_AVAILABLE =
+            "That unit isn't accepting viewings right now.";
     public static final String MANDATE_PDF_NOT_READY =
             "The mandate PDF hasn't been generated yet.";
     public static final String MANDATE_SIGNED_NOT_AVAILABLE =
