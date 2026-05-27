@@ -119,6 +119,21 @@ public class LandlordService {
             return findOrCreateForUser(matchedUser.get());
         }
 
+        // No matching user. If the caller didn't send any of the
+        // offline-capture fields (firstName / lastName / phone /
+        // idNumber) we know they intended the online path — emit a
+        // specific "email not on Habitat" error so they know to ask
+        // the landlord to register or to switch to the offline flow,
+        // rather than the generic offline-fields-missing message.
+        boolean offlineCaptureProvided =
+                (capture.firstName() != null && !capture.firstName().isBlank())
+                || (capture.lastName() != null && !capture.lastName().isBlank())
+                || (capture.idNumber() != null && !capture.idNumber().isBlank())
+                || (capture.phone() != null && !capture.phone().isBlank());
+        if (!offlineCaptureProvided) {
+            throw new BadRequestException(ErrorMessages.LANDLORD_EMAIL_NOT_ON_HABITAT);
+        }
+
         if (capture.firstName() == null || capture.firstName().isBlank()
                 || capture.lastName() == null || capture.lastName().isBlank()) {
             throw new BadRequestException(ErrorMessages.LANDLORD_REQUIRED_FIELDS);

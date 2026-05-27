@@ -56,6 +56,8 @@ public final class ErrorMessages {
             "Only the agent who first captured this landlord can change their details. Request an update via the inbox.";
     public static final String LANDLORD_REQUIRED_FIELDS =
             "Offline landlord capture needs at least a first name, last name, email, and ID number.";
+    public static final String LANDLORD_EMAIL_NOT_ON_HABITAT =
+            "No Habitat account with that email. Ask the landlord to register first, or switch off \"Landlord is on Habitat\" to add them offline.";
     public static final String UNIT_NOT_FOUND = "Unit not found.";
     public static final String UNIT_NOT_AVAILABLE = "This unit isn't accepting applications right now.";
     public static final String APPLICATION_ALREADY_SUBMITTED = "You've already applied for this unit.";
