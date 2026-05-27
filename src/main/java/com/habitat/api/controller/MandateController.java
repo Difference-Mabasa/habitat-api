@@ -84,6 +84,22 @@ public class MandateController {
     }
 
     /**
+     * Online landlord approves the mandate from /my-mandates. 403
+     * unless the caller is the resolved owner User on
+     * {@code property.landlord}.
+     */
+    @PostMapping("/approve")
+    public MandateResponse approve(@PathVariable UUID propertyId) {
+        return mandates.approveByLandlord(propertyId);
+    }
+
+    /** Online landlord rejects the mandate. Same authorization as approve. */
+    @PostMapping("/reject")
+    public MandateResponse reject(@PathVariable UUID propertyId) {
+        return mandates.rejectByLandlord(propertyId);
+    }
+
+    /**
      * Download the generated mandate PDF. Rendered on-demand via
      * headless Chromium against the React {@code /print/mandate/:id}
      * route — the on-screen design IS the document, so the PDF tracks

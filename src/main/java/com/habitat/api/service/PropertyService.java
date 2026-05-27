@@ -68,6 +68,7 @@ public class PropertyService {
     private final AmenityRepository amenities;
     private final SecurityUtils security;
     private final LandlordService landlordService;
+    private final org.springframework.context.ApplicationEventPublisher events;
 
     public enum SortKey {
         NEWEST, PRICE, BEDROOMS, SIZE
@@ -359,6 +360,7 @@ public class PropertyService {
         }
         p.setStatus(PropertyStatus.LISTED);
         log.info("property {} published by user {}", p.getId(), security.requireUserId());
+        events.publishEvent(new com.habitat.api.event.PropertyPublishedEvent(p.getId()));
         return PropertyDetailResponse.from(p);
     }
 

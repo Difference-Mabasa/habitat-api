@@ -54,6 +54,57 @@ public enum NotificationType {
      * extension over backroom — backroom only pushed to the manager.
      */
     APPLICATION_SUBMITTED_TENANT(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    // ── Property listing lifecycle ────────────────────────────────────
+    // Pushed from the property + mandate event listeners. Manager
+    // always gets manager-targeted notifications; owner-targeted
+    // pushes only fire when landlord.user is non-null (ONLINE).
+
+    /**
+     * Property has just transitioned DRAFT|UNLISTED → LISTED. Sent to
+     * the manager (acknowledging publish) and to the owner-User when
+     * different (agent-managed case with an online landlord).
+     */
+    PROPERTY_PUBLISHED(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Online landlord — the agent has just issued a mandate against
+     * one of their properties. They tap Approve/Reject in their
+     * /my-mandates inbox to flip the mandate to ACTIVE or REJECTED.
+     */
+    MANDATE_PENDING_LANDLORD_APPROVAL(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Agent-side reminder for the offline-landlord flow: the mandate
+     * PDF is ready to email / hand to the landlord for signature.
+     * Landlord has no Habitat account to push to.
+     */
+    MANDATE_PENDING_OFFLINE_SIGNATURE(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Sent to the agent when the online landlord approves the
+     * mandate. Mirrors backroom's MANDATE_APPROVED.
+     */
+    MANDATE_APPROVED(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Sent to the agent when the online landlord rejects the mandate.
+     */
+    MANDATE_REJECTED(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Final-state acknowledgement when the mandate transitions to
+     * ACTIVE — either the online landlord approved or the offline
+     * flow completed (signed upload + agent attestation). Pushed to
+     * the agent always; pushed to the landlord-User when ONLINE.
+     */
+    MANDATE_ACTIVE(NotificationCategory.MESSAGING,
             EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL));
 
     private final NotificationCategory category;

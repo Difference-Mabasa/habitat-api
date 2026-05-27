@@ -34,6 +34,8 @@ public final class ErrorMessages {
             "Mandates only apply to agent-managed listings.";
     public static final String MANDATE_NOT_READY_FOR_UPLOAD =
             "A signed mandate can only be uploaded after issue.";
+    public static final String MANDATE_NOT_READY_FOR_LANDLORD_DECISION =
+            "This mandate isn't awaiting your approval right now.";
     public static final String MANDATE_PDF_NOT_READY =
             "The mandate PDF hasn't been generated yet.";
     public static final String MANDATE_SIGNED_NOT_AVAILABLE =

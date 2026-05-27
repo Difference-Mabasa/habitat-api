@@ -24,6 +24,12 @@ public final class TemplatePlaceholders {
     public static final String P_PROPERTY_TITLE = "propertyTitle";
     public static final String P_UNIT_TITLE = "unitTitle";
     public static final String P_START_DATE = "startDate";
+    // Property-listing lifecycle (PropertyPublishedListener +
+    // mandate-state listeners).
+    public static final String P_AGENT_NAME = "agentName";
+    public static final String P_PROPERTY_ADDRESS = "propertyAddress";
+    public static final String P_FEE_PERCENT = "feePercent";
+    public static final String P_MANDATE_TYPE = "mandateType";
 
     private TemplatePlaceholders() {}
 }

@@ -11,12 +11,18 @@ import com.habitat.api.entity.User;
 import com.habitat.api.enums.LandlordType;
 import com.habitat.api.enums.ListingMode;
 import com.habitat.api.enums.MandateStatus;
+import com.habitat.api.event.MandateActiveEvent;
+import com.habitat.api.event.MandateApprovedEvent;
+import com.habitat.api.event.MandateIssuedEvent;
+import com.habitat.api.event.MandateRejectedEvent;
 import com.habitat.api.exception.ConflictException;
+import com.habitat.api.exception.ForbiddenException;
 import com.habitat.api.exception.ResourceNotFoundException;
 import com.habitat.api.repository.MandateRepository;
 import com.habitat.api.repository.PropertyRepository;
 import com.habitat.api.repository.UserRepository;
 import com.habitat.api.security.SecurityUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import com.habitat.api.storage.StorageService;
 import com.habitat.api.storage.StoredFile;
 import com.habitat.api.storage.StoredResource;
@@ -66,6 +72,7 @@ public class MandateService {
     private final MandatePdfService mandatePdf;
     private final StorageService storage;
     private final SecurityUtils security;
+    private final ApplicationEventPublisher events;
 
     /** Most-recent mandate for the property (any status), if any. */
     @Transactional(readOnly = true)
@@ -140,7 +147,66 @@ public class MandateService {
 
         log.info("mandate {} issued for property {} (status={})",
                 saved.getId(), propertyId, saved.getStatus());
+        events.publishEvent(new MandateIssuedEvent(saved.getId()));
         return MandateResponse.from(saved);
+    }
+
+    /**
+     * Online landlord approves the mandate. Caller must be the
+     * resolved owner User on {@code property.landlord} — anyone
+     * else gets 403. Transitions PENDING_LANDLORD_APPROVAL → ACTIVE
+     * and publishes both {@link MandateApprovedEvent} (so the agent
+     * hears about the approval) and {@link MandateActiveEvent} (the
+     * terminal-state acknowledgement consumed by both parties).
+     */
+    @Transactional
+    public MandateResponse approveByLandlord(UUID propertyId) {
+        Mandate m = mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.MANDATE_NOT_FOUND));
+        requireLandlordCaller(m);
+        if (m.getStatus() != MandateStatus.PENDING_LANDLORD_APPROVAL) {
+            throw new ConflictException(ErrorMessages.MANDATE_NOT_READY_FOR_LANDLORD_DECISION);
+        }
+        m.setStatus(MandateStatus.ACTIVE);
+        log.info("mandate {} approved by landlord — status ACTIVE", m.getId());
+        events.publishEvent(new MandateApprovedEvent(m.getId()));
+        events.publishEvent(new MandateActiveEvent(m.getId()));
+        return MandateResponse.from(m);
+    }
+
+    /**
+     * Online landlord rejects the mandate. Caller must be the
+     * resolved owner User on {@code property.landlord} — anyone
+     * else gets 403. Transitions PENDING_LANDLORD_APPROVAL → REJECTED
+     * and publishes {@link MandateRejectedEvent} so the agent can
+     * follow up out-of-band before re-issuing.
+     */
+    @Transactional
+    public MandateResponse rejectByLandlord(UUID propertyId) {
+        Mandate m = mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.MANDATE_NOT_FOUND));
+        requireLandlordCaller(m);
+        if (m.getStatus() != MandateStatus.PENDING_LANDLORD_APPROVAL) {
+            throw new ConflictException(ErrorMessages.MANDATE_NOT_READY_FOR_LANDLORD_DECISION);
+        }
+        m.setStatus(MandateStatus.REJECTED);
+        log.info("mandate {} rejected by landlord — status REJECTED", m.getId());
+        events.publishEvent(new MandateRejectedEvent(m.getId()));
+        return MandateResponse.from(m);
+    }
+
+    /** Only the resolved online owner can approve/reject. */
+    private void requireLandlordCaller(Mandate m) {
+        UUID me = security.requireUserId();
+        Property p = m.getProperty();
+        Landlord landlord = p == null ? null : p.getLandlord();
+        boolean isOnlineOwner = landlord != null
+                && landlord.getType() == LandlordType.ONLINE
+                && landlord.getUser() != null
+                && me.equals(landlord.getUser().getId());
+        if (!isOnlineOwner) {
+            throw new ForbiddenException(ErrorMessages.FORBIDDEN);
+        }
     }
 
     /**
@@ -170,8 +236,14 @@ public class MandateService {
             storage.delete(m.getSignedDocumentPath());
         }
         m.setSignedDocumentPath(stored.storedPath());
-        m.setStatus(m.isAgentAttested() ? MandateStatus.ACTIVE : MandateStatus.PENDING_AGENT_ACCEPTANCE);
+        MandateStatus next = m.isAgentAttested()
+                ? MandateStatus.ACTIVE
+                : MandateStatus.PENDING_AGENT_ACCEPTANCE;
+        m.setStatus(next);
         log.info("mandate {} signed PDF uploaded; status={}", m.getId(), m.getStatus());
+        if (next == MandateStatus.ACTIVE) {
+            events.publishEvent(new MandateActiveEvent(m.getId()));
+        }
         return MandateResponse.from(m);
     }
 
