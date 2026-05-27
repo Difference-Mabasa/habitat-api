@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -79,6 +80,21 @@ public class MandateService {
     public Optional<MandateResponse> getForProperty(UUID propertyId) {
         return mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId)
                 .map(MandateResponse::from);
+    }
+
+    /**
+     * Mandates pending the calling user's landlord-side approval.
+     * Drives the /mandate-approvals inbox the
+     * MANDATE_PENDING_LANDLORD_APPROVAL notification's CTA lands on.
+     * Returns empty when the caller is OFFLINE or has no mandates.
+     */
+    @Transactional(readOnly = true)
+    public List<MandateResponse> listAwaitingMyApproval() {
+        UUID me = security.requireUserId();
+        return mandates.findByStatusAndProperty_Landlord_User_IdOrderByCreatedAtDesc(
+                MandateStatus.PENDING_LANDLORD_APPROVAL, me).stream()
+                .map(MandateResponse::from)
+                .toList();
     }
 
     /**

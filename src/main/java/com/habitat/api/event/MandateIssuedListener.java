@@ -77,7 +77,10 @@ public class MandateIssuedListener {
                             TemplatePlaceholders.P_MANDATE_TYPE, mandateType,
                             TemplatePlaceholders.P_FEE_PERCENT, feePercent,
                             TemplatePlaceholders.P_PROPERTY_TITLE, propertyTitle),
-                    "/my-mandates",
+                    // Landlord-side approve/reject inbox — distinct from
+                    // /my-mandates (the agent's portfolio of mandates they
+                    // own/issue).
+                    "/mandate-approvals",
                     NotificationMessages.MANDATE_PENDING_LANDLORD_APPROVAL_ACTION_LABEL,
                     mandate.getId());
         } else if (mandate.getAgent() != null) {

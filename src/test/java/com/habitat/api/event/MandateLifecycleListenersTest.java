@@ -69,7 +69,7 @@ class MandateLifecycleListenersTest {
                 eq(owner),
                 eq(NotificationType.MANDATE_PENDING_LANDLORD_APPROVAL),
                 any(), any(),
-                eq("/my-mandates"),
+                eq("/mandate-approvals"),
                 any(),
                 eq(MANDATE_ID));
         verify(notifications, times(1))

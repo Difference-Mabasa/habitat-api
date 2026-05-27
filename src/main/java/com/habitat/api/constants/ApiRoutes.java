@@ -55,7 +55,10 @@ public final class ApiRoutes {
     public static final String AMENITIES = BASE + "/amenities";
 
     // Mandates are scoped to a property — paths constructed at the
-    // controller as `/properties/{id}/mandate/...`.
+    // controller as `/properties/{id}/mandate/...`. The cross-property
+    // inbox lives at the top-level `/mandates` namespace.
+    public static final String MANDATES = BASE + "/mandates";
+    public static final String MANDATES_AWAITING_MY_APPROVAL = MANDATES + "/awaiting-my-approval";
 
     // Invoices
     public static final String INVOICES = BASE + "/invoices";
