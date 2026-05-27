@@ -2,32 +2,47 @@
 <html><head><meta charset="UTF-8"/>
 <style>
   @page { size: A4; margin: 0; }
-  body { font-family: 'Helvetica', sans-serif; font-size: 11pt; color: #1E0F06; line-height: 1.55; margin: 0; }
-  .page { position: relative; min-height: 297mm; padding: 28mm 24mm 24mm; box-sizing: border-box; }
-  .doc-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 6mm; border-bottom: 2px solid #1E0F06; }
-  .brand { font-family: 'Helvetica', sans-serif; font-weight: 700; font-size: 14pt; letter-spacing: 0.5px; }
-  .brand .accent { color: #E97A1F; }
-  .doc-meta { text-align: right; font-size: 8pt; color: #6b6b6b; line-height: 1.6; }
-  .doc-meta .ref { font-family: 'Courier', monospace; font-weight: 700; font-size: 9pt; color: #1E0F06; }
-  .title-block { margin-top: 14mm; }
-  .eyebrow { font-size: 8pt; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #6b6b6b; }
-  h1.display { font-size: 32pt; font-weight: 700; letter-spacing: -0.5px; margin: 3mm 0 2mm; text-transform: uppercase; color: #1E0F06; }
-  .subtitle { font-size: 10pt; color: #6b6b6b; margin: 0; }
-  .section { margin-top: 10mm; }
-  .section h2 { font-size: 9pt; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #6b6b6b; margin: 0 0 3mm 0; }
+  body { font-family: 'Inter', 'Helvetica', sans-serif; font-size: 10pt; color: #1e0f06; line-height: 1.55; margin: 0; -fs-font-feature-settings: normal; }
+  .page { position: relative; min-height: 297mm; padding: 18mm 18mm 22mm; box-sizing: border-box; }
+
+  .doc-header { display: table; width: 100%; padding-bottom: 5mm; border-bottom: 2px solid #1e0f06; }
+  .doc-header .brand-cell, .doc-header .meta-cell { display: table-cell; vertical-align: middle; }
+  .doc-header .brand-cell { width: 55%; }
+  .doc-header .meta-cell { width: 45%; text-align: right; vertical-align: top; }
+  .brand-logo { display: inline-block; vertical-align: middle; }
+  .wordmark, .wordmark-accent { font-family: 'Anton', 'Helvetica', sans-serif; font-weight: 400; font-size: 22pt; letter-spacing: 0.5px; text-transform: uppercase; line-height: 1; vertical-align: middle; }
+  .wordmark { color: #1e0f06; }
+  .wordmark-accent { color: #e97a1f; }
+  .doc-meta { font-size: 7.5pt; color: #6b5340; line-height: 1.6; }
+  .doc-meta .ref { font-family: 'JetBrains Mono', 'Courier', monospace; font-weight: 700; font-size: 9pt; color: #1e0f06; letter-spacing: 0.02em; }
+
+  .title-block { margin-top: 10mm; }
+  .eyebrow { font-family: 'JetBrains Mono', 'Courier', monospace; font-size: 7.5pt; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #6b5340; line-height: 1.4; }
+  h1.display { font-family: 'Anton', 'Helvetica', sans-serif; font-weight: 400; font-size: 36pt; letter-spacing: 0.5px; margin: 2mm 0 4mm; text-transform: uppercase; color: #1e0f06; line-height: 1.05; }
+  .subtitle { font-size: 9pt; color: #6b5340; margin: 0; line-height: 1.4; }
+
+  .section { margin-top: 7mm; }
+  .section h2 { font-family: 'Inter', 'Helvetica', sans-serif; font-size: 9pt; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #6b5340; margin: 0 0 2.5mm 0; }
   .kv { display: table; width: 100%; border-collapse: collapse; }
   .kv .row { display: table-row; }
-  .kv .row .k, .kv .row .v { display: table-cell; padding: 2mm 0; border-bottom: 1px dotted #d0c8c4; vertical-align: top; font-size: 10pt; }
-  .kv .row .k { width: 38%; color: #6b6b6b; font-weight: 500; }
-  .kv .row .v { font-weight: 500; }
-  .mono { font-family: 'Courier', monospace; }
-  .signatures { display: table; width: 100%; margin-top: 14mm; }
-  .signatures .col { display: table-cell; width: 50%; padding-right: 6mm; vertical-align: top; }
-  .signatures .col:last-child { padding-right: 0; padding-left: 6mm; }
-  .signatures .line { border-bottom: 1px solid #1E0F06; height: 12mm; position: relative; }
-  .signatures .label { font-size: 8pt; color: #6b6b6b; margin-top: 2mm; }
-  .watermark { position: absolute; top: 110mm; left: 0; right: 0; text-align: center; font-weight: 700; font-size: 88pt; letter-spacing: 6px; color: rgba(233, 122, 31, 0.07); }
-  .doc-footer { position: absolute; left: 24mm; right: 24mm; bottom: 12mm; display: flex; justify-content: space-between; font-size: 7.5pt; color: #6b6b6b; }
+  .kv .row .k, .kv .row .v { display: table-cell; padding: 2.5mm 0; border-bottom: 1px dotted #e5e5e2; vertical-align: top; font-size: 9.5pt; }
+  .kv .row .k { width: 48mm; color: #6b5340; font-weight: 500; padding-right: 4mm; }
+  .kv .row .v { font-weight: 500; color: #1e0f06; }
+  .mono { font-family: 'JetBrains Mono', 'Courier', monospace; }
+
+  .body-copy { font-size: 9.5pt; line-height: 1.65; color: #1e0f06; }
+
+  .signatures { position: absolute; left: 18mm; right: 18mm; bottom: 22mm; display: table; width: 89%; }
+  .signatures .col { display: table-cell; width: 50%; padding-right: 10mm; vertical-align: bottom; }
+  .signatures .col:last-child { padding-right: 0; padding-left: 10mm; }
+  .signatures .line { border-bottom: 1px solid #1e0f06; height: 12mm; position: relative; }
+  .signatures .sig-overlay { position: absolute; bottom: 1mm; left: 1mm; font-family: 'Brush Script MT', 'Lucida Handwriting', 'Comic Sans MS', cursive; font-style: italic; font-size: 18pt; color: #1e0f06; }
+  .signatures .label { font-size: 8pt; color: #6b5340; margin-top: 1.5mm; }
+
+  .watermark { position: absolute; top: 130mm; left: 0; right: 0; text-align: center; transform: rotate(-22deg); font-family: 'Anton', 'Helvetica', sans-serif; font-weight: 400; font-size: 120pt; letter-spacing: 8px; color: #fbe6d0; }
+  .doc-footer { position: absolute; left: 18mm; right: 18mm; bottom: 9mm; display: table; width: 89%; font-size: 7pt; color: #6b5340; }
+  .doc-footer .left, .doc-footer .right { display: table-cell; width: 50%; }
+  .doc-footer .right { text-align: right; font-family: 'JetBrains Mono', 'Courier', monospace; }
 </style>
 </head>
 <body>
@@ -35,11 +50,22 @@
   <div class="watermark">SPECIMEN</div>
 
   <div class="doc-header">
-    <div class="brand"><span>HABI</span><span class="accent">TAT</span></div>
-    <div class="doc-meta">
-      <div class="ref">LEASE {{leaseRef}}</div>
-      <div>Generated {{generatedOn}}</div>
-      <div>POPIA-compliant electronic instrument</div>
+    <div class="brand-cell">
+      <svg class="brand-logo" width="26" height="26" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 3 L33 12 L33 28 L18 33 L3 28 L3 12 Z" fill="#e97a1f"/>
+        <path d="M18 3 L33 12 L18 17 Z" fill="#ffffff" fill-opacity="0.18"/>
+        <path d="M3 12 L18 17 L18 33 L3 28 Z" fill="#000000" fill-opacity="0.15"/>
+        <path d="M11 18 L18 14 L25 18 L25 25 L11 25 Z" fill="#ffffff" fill-opacity="0.95"/>
+        <rect x="16" y="20" width="4" height="5" fill="#e97a1f"/>
+      </svg>
+      <span class="wordmark">HABI</span><span class="wordmark-accent">TAT</span>
+    </div>
+    <div class="meta-cell">
+      <div class="doc-meta">
+        <div class="ref">LEASE {{leaseRef}}</div>
+        <div>Generated {{generatedOn}}</div>
+        <div>POPIA-compliant electronic instrument</div>
+      </div>
     </div>
   </div>
 
@@ -54,7 +80,7 @@
     <div class="kv">
       <div class="row"><div class="k">Landlord</div><div class="v">{{landlord}}</div></div>
       <div class="row"><div class="k">Tenant</div><div class="v">{{tenant}}</div></div>
-      <div class="row"><div class="k">Witness</div><div class="v">Habitat SA (Pty) Ltd</div></div>
+      <div class="row"><div class="k">Witness</div><div class="v">Habitat SA (Pty) Ltd &#183; ref {{witnessRef}}</div></div>
     </div>
   </div>
 
@@ -78,24 +104,24 @@
   </div>
 
   <div class="section">
-    <h2>4. Signatures</h2>
-    <div class="signatures">
-      <div class="col">
-        <div class="line"></div>
-        <div class="label"><strong>Tenant — {{tenant}}</strong></div>
-        <div class="label mono">{{tenantSigStamp}}</div>
-      </div>
-      <div class="col">
-        <div class="line"></div>
-        <div class="label"><strong>Landlord — {{landlord}}</strong></div>
-        <div class="label mono">{{landlordSigStamp}}</div>
-      </div>
+    <h2>4. Utilities</h2>
+    <div class="body-copy">Electricity is prepaid; the Tenant tops up directly. Water is included up to 6 kL/month, with excess charged at municipal rate. Refuse is included.</div>
+  </div>
+
+  <div class="signatures">
+    <div class="col">
+      <div class="line"><span class="sig-overlay">{{landlordSigName}}</span></div>
+      <div class="label">{{landlordSigStamp}}</div>
+    </div>
+    <div class="col">
+      <div class="line"><span class="sig-overlay">{{tenantSigName}}</span></div>
+      <div class="label">{{tenantSigStamp}}</div>
     </div>
   </div>
 
   <div class="doc-footer">
-    <span>Habitat SA (Pty) Ltd · habitat.co.za</span>
-    <span class="mono">{{leaseRef}}</span>
+    <span class="left">Page 1 of 1 &#183; Habitat SA (Pty) Ltd &#183; PPRA reg. FFC2026/00831</span>
+    <span class="right">{{shortUrl}}</span>
   </div>
 </div>
 </body>

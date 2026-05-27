@@ -165,6 +165,25 @@
             <artifactId>openhtmltopdf-pdfbox</artifactId>
             <version>1.0.10</version>
         </dependency>
+        <!-- Inline SVG support — used by lease/mandate templates for the hex
+             HABITAT logo so the rendered PDF matches the /lease-pdf design. -->
+        <dependency>
+            <groupId>com.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-svg-support</artifactId>
+            <version>1.0.10</version>
+        </dependency>
+        <!-- Headless Chrome PDF pipeline — the dev-hub specimens (and, in a
+             follow-on slice, production lease/mandate downloads) point a
+             pooled Chromium at the React /print/{lease,mandate}/:id route
+             and call page.pdf(). The PDF is byte-identical to what Chrome
+             renders, so the design system + React tree is the single
+             source of truth for the document. First run downloads
+             Chromium (~150 MB) into the Playwright cache. -->
+        <dependency>
+            <groupId>com.microsoft.playwright</groupId>
+            <artifactId>playwright</artifactId>
+            <version>1.49.0</version>
+        </dependency>
 
         <!-- ===== OBSERVABILITY ===== -->
         <dependency>

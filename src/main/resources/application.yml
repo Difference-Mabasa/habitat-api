@@ -56,6 +56,11 @@ app:
   storage:
     type: ${STORAGE_TYPE:local}
     local-path: ${UPLOAD_DIR:./uploads}
+  ui:
+    # Origin the headless Chromium loads /print/{lease,mandate}/:id from
+    # for PDF rendering. Local: the Vite dev server. Prod: the Habitat UI
+    # host the API can reach from inside its container/network.
+    base-url: ${UI_BASE_URL:http://localhost:5173}
 
 logging:
   level:

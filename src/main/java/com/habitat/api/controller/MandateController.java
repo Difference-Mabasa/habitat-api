@@ -3,6 +3,7 @@ package com.habitat.api.controller;
 import com.habitat.api.constants.ApiRoutes;
 import com.habitat.api.dto.mandate.IssueMandateRequest;
 import com.habitat.api.dto.mandate.MandateResponse;
+import com.habitat.api.service.BrowserRendererService;
 import com.habitat.api.service.MandateService;
 import com.habitat.api.storage.StoredResource;
 import jakarta.validation.Valid;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -38,6 +40,7 @@ import java.util.UUID;
 public class MandateController {
 
     private final MandateService mandates;
+    private final BrowserRendererService browserRenderer;
 
     /**
      * Current mandate row for the property. Returns 404 (mapped from
@@ -80,11 +83,26 @@ public class MandateController {
         return mandates.uploadSigned(propertyId, file);
     }
 
-    /** Download the generated mandate PDF. */
+    /**
+     * Download the generated mandate PDF. Rendered on-demand via
+     * headless Chromium against the React {@code /print/mandate/:id}
+     * route — the on-screen design IS the document, so the PDF tracks
+     * the latest mandate state (status, attestation, sigs) without a
+     * regenerate-and-store step.
+     */
     @GetMapping("/pdf")
-    public ResponseEntity<StreamingResponseBody> downloadPdf(@PathVariable UUID propertyId) {
-        StoredResource r = mandates.openMandatePdf(propertyId);
-        return streamPdf(r, "mandate-" + propertyId + ".pdf");
+    public ResponseEntity<byte[]> downloadPdf(
+            @PathVariable UUID propertyId,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader
+    ) {
+        mandates.requirePdfReadable(propertyId);
+        byte[] pdf = browserRenderer.renderUrlToPdf("/print/mandate/" + propertyId, authHeader);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"mandate-" + propertyId + ".pdf\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(pdf);
     }
 
     /** Download the signed mandate PDF (offline flow). */

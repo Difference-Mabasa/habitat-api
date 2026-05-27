@@ -211,6 +211,19 @@ public class MandateService {
         return storage.open(path);
     }
 
+    /**
+     * Access check the {@code /mandate/pdf} download endpoint runs
+     * before delegating to {@link BrowserRendererService} for an
+     * on-demand Playwright render. Returns nothing — the call's only
+     * job is to throw {@code 404} or {@code 403} when appropriate.
+     */
+    @Transactional(readOnly = true)
+    public void requirePdfReadable(UUID propertyId) {
+        Mandate m = mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.MANDATE_NOT_FOUND));
+        propertyService.requireCanEdit(m.getProperty());
+    }
+
     /** Streaming handle for the signed mandate (offline flow). */
     @Transactional(readOnly = true)
     public StoredResource openSignedPdf(UUID propertyId) {

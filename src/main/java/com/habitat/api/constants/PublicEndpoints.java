@@ -17,6 +17,7 @@ public final class PublicEndpoints {
             ApiRoutes.LANDING_STATS,
             ApiRoutes.LANDING_CITIES,
             ApiRoutes.AMENITIES,
+            ApiRoutes.DEV_SPECIMENS + "/**",  // dev-hub PDF specimens (gated on profile in the controller)
             ApiRoutes.FILES_IMAGES + "/**",  // public property + unit photos
             ApiRoutes.DOCS,
             ApiRoutes.DOCS_API,

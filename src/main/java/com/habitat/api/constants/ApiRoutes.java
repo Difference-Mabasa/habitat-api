@@ -71,6 +71,12 @@ public final class ApiRoutes {
     public static final String LANDING_STATS = LANDING + "/stats";
     public static final String LANDING_CITIES = LANDING + "/cities";
 
+    // Dev hub — non-prod specimen PDFs the dev gallery embeds.
+    public static final String DEV_SPECIMENS = BASE + "/dev/specimens";
+    public static final String DEV_SPECIMEN_MANDATE_PDF = DEV_SPECIMENS + "/mandate.pdf";
+    public static final String DEV_SPECIMEN_LEASE_PDF = DEV_SPECIMENS + "/lease.pdf";
+    public static final String DEV_SPECIMEN_INVOICE_PDF = DEV_SPECIMENS + "/invoice.pdf";
+
     /**
      * UI route the welcome notification's CTA points at. Not an API path —
      * shipped here so any future surface that needs to deep-link to the
