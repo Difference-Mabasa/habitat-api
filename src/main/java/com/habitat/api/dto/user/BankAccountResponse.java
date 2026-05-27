@@ -6,8 +6,8 @@ import com.habitat.api.enums.BankAccountType;
 import java.util.UUID;
 
 /**
- * Read shape for {@code GET /users/me/bank-account}. Returned exactly
- * as the user submitted it on the wizard's payout step.
+ * Read shape for {@code GET /properties/{propertyId}/bank-account}.
+ * Returned exactly as the wizard's payout step submitted it.
  */
 public record BankAccountResponse(
         UUID id,

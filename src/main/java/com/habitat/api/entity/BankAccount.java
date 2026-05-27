@@ -18,11 +18,14 @@ import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
 
 /**
- * A landlord's payout destination. One-to-one with {@link User} —
- * habitat-ui collects bank details once on the user, not per listing.
- * Phase 8 (Payouts) will own the ledger that moves money TO this
- * account; this entity exists today so the wizard's payout step has
- * somewhere to persist.
+ * Payout destination for a single {@link Property}. One bank row per
+ * property — an agent listing on behalf of an offline landlord captures
+ * the LANDLORD'S bank here, not their own. A user's personal earnings
+ * (agent fees, tenant refunds) belong on a separate per-user record.
+ *
+ * Phase 8 (Payouts) will own the ledger that moves money TO this row;
+ * for now the wizard's step-5 form persists into it so payout details
+ * land alongside the listing and never bleed across drafts.
  */
 @Getter
 @Setter
@@ -35,8 +38,8 @@ import org.hibernate.annotations.SQLRestriction;
 public class BankAccount extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
-    private User user;
+    @JoinColumn(name = "property_id", nullable = false, unique = true)
+    private Property property;
 
     @Column(name = "bank_name", nullable = false, length = 100)
     private String bankName;

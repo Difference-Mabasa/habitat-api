@@ -8,6 +8,6 @@ import java.util.UUID;
 
 public interface BankAccountRepository extends JpaRepository<BankAccount, UUID> {
 
-    /** The (at most one) bank account owned by the given user. */
-    Optional<BankAccount> findByUser_Id(UUID userId);
+    /** The (at most one) bank account attached to the given property. */
+    Optional<BankAccount> findByProperty_Id(UUID propertyId);
 }

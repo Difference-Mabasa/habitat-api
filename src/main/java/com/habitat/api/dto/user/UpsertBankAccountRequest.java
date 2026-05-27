@@ -6,10 +6,10 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * Body for {@code PUT /users/me/bank-account}. Upsert semantics — if
- * the user already has a row, all fields are overwritten; otherwise
- * a new row is created. There is intentionally no per-field PATCH:
- * partial bank details are a footgun.
+ * Body for {@code PUT /properties/{propertyId}/bank-account}. Upsert
+ * semantics — if the property already has a bank row, all fields are
+ * overwritten; otherwise a new row is created. There is intentionally
+ * no per-field PATCH: partial bank details are a footgun.
  */
 public record UpsertBankAccountRequest(
         @NotBlank @Size(max = 100) String bankName,

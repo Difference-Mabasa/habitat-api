@@ -26,7 +26,6 @@ public final class ApiRoutes {
     public static final String USERS = BASE + "/users";
     public static final String USERS_ME = USERS + "/me";
     public static final String USERS_ME_ACTIVE_ROLE = USERS_ME + "/active-role";
-    public static final String USERS_ME_BANK_ACCOUNT = USERS_ME + "/bank-account";
 
     // Notifications
     public static final String NOTIFICATIONS = BASE + "/notifications";
@@ -42,6 +41,7 @@ public final class ApiRoutes {
     public static final String PROPERTIES_POPULAR_AREAS = PROPERTIES + "/popular-areas";
     public static final String PROPERTIES_TOP_RATED = PROPERTIES + "/top-rated";
     public static final String PROPERTIES_OWNED_BY_ME = PROPERTIES + "/owned-by-me";
+    public static final String PROPERTIES_BANK_ACCOUNT = PROPERTIES + "/{propertyId}/bank-account";
     public static final String UNITS = BASE + "/units";
 
     // Landlords — distinct identity from User. See entity Landlord.java.

@@ -8,19 +8,27 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 /**
- * Payout-destination endpoints, scoped to the current user.
+ * Per-property payout endpoints.
  *
- * <p>{@code GET /users/me/bank-account} → 200 with the current row,
- * or 404 when none is set yet. The wizard treats 404 as "ask the
- * user to enter details" rather than "error".
+ * <p>{@code GET /properties/{propertyId}/bank-account} → 200 with the
+ * row, or 404 when no bank has been set on this property yet. The
+ * wizard treats 404 as "fields stay blank" rather than an error.
  *
- * <p>{@code PUT /users/me/bank-account} → upsert. Single endpoint
- * because partial bank-detail PATCHes are a footgun.
+ * <p>{@code PUT /properties/{propertyId}/bank-account} → upsert.
+ * Single endpoint because partial bank-detail PATCHes are a footgun.
+ *
+ * <p>Authorization on both is delegated to
+ * {@code PropertyService.canEdit} — the property's manager (and,
+ * for online-owner listings, the landlord-user themselves) can read
+ * and write; anyone else gets 403.
  */
 @RestController
 @RequiredArgsConstructor
@@ -28,15 +36,17 @@ public class BankAccountController {
 
     private final BankAccountService accounts;
 
-    @GetMapping(ApiRoutes.USERS_ME_BANK_ACCOUNT)
-    public ResponseEntity<BankAccountResponse> getMine() {
-        return accounts.getMine()
+    @GetMapping(ApiRoutes.PROPERTIES_BANK_ACCOUNT)
+    public ResponseEntity<BankAccountResponse> getForProperty(@PathVariable UUID propertyId) {
+        return accounts.getForProperty(propertyId)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @PutMapping(ApiRoutes.USERS_ME_BANK_ACCOUNT)
-    public BankAccountResponse upsertMine(@Valid @RequestBody UpsertBankAccountRequest req) {
-        return accounts.upsertMine(req);
+    @PutMapping(ApiRoutes.PROPERTIES_BANK_ACCOUNT)
+    public BankAccountResponse upsertForProperty(
+            @PathVariable UUID propertyId,
+            @Valid @RequestBody UpsertBankAccountRequest req) {
+        return accounts.upsertForProperty(propertyId, req);
     }
 }
