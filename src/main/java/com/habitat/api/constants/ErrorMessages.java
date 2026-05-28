@@ -36,6 +36,8 @@ public final class ErrorMessages {
             "A signed mandate can only be uploaded after issue.";
     public static final String MANDATE_NOT_READY_FOR_LANDLORD_DECISION =
             "This mandate isn't awaiting your approval right now.";
+    public static final String MANDATE_SIGNED_NAME_MISMATCH =
+            "The typed name doesn't match your registered name. Please type your full registered name exactly.";
     public static final String VIEWING_NOT_FOUND = "Viewing not found.";
     public static final String VIEWING_INVALID_TRANSITION =
             "That viewing can't move to that state right now.";

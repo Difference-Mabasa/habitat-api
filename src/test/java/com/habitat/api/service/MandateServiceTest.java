@@ -1,6 +1,7 @@
 package com.habitat.api.service;
 
 import com.habitat.api.dto.PageResponse;
+import com.habitat.api.dto.mandate.ApproveMandateRequest;
 import com.habitat.api.dto.mandate.MandateResponse;
 import com.habitat.api.entity.Landlord;
 import com.habitat.api.entity.Mandate;
@@ -12,6 +13,7 @@ import com.habitat.api.enums.MandateType;
 import com.habitat.api.event.MandateActiveEvent;
 import com.habitat.api.event.MandateApprovedEvent;
 import com.habitat.api.event.MandateRejectedEvent;
+import com.habitat.api.exception.BadRequestException;
 import com.habitat.api.exception.ConflictException;
 import com.habitat.api.exception.ForbiddenException;
 import com.habitat.api.repository.MandateRepository;
@@ -67,11 +69,12 @@ class MandateServiceTest {
     private static final UUID MANDATE_ID = UUID.fromString("ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb");
     private static final UUID OWNER_ID   = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final UUID AGENT_ID   = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final ApproveMandateRequest VALID_APPROVE = new ApproveMandateRequest("Naledi Owner");
 
     // ── approveByLandlord ────────────────────────────────────────────
 
     @Test
-    void approve_flips_status_to_active_and_publishes_both_events() {
+    void approve_flips_status_to_active_and_stores_signed_fields_and_publishes_both_events() {
         User owner = user(OWNER_ID, "Naledi", "Owner");
         Mandate m = mandate(user(AGENT_ID, "Pieter", "Agent"),
                 onlineLandlord(owner), MandateStatus.PENDING_LANDLORD_APPROVAL);
@@ -79,11 +82,50 @@ class MandateServiceTest {
                 .thenReturn(Optional.of(m));
         when(security.requireUserId()).thenReturn(OWNER_ID);
 
-        service.approveByLandlord(PROP_ID);
+        service.approveByLandlord(PROP_ID, VALID_APPROVE);
 
         assertThat(m.getStatus()).isEqualTo(MandateStatus.ACTIVE);
+        assertThat(m.getSignedName()).isEqualTo("Naledi Owner");
+        assertThat(m.getSignedAt()).isNotNull();
         verify(events).publishEvent(any(MandateApprovedEvent.class));
         verify(events).publishEvent(any(MandateActiveEvent.class));
+    }
+
+    @Test
+    void approve_with_mismatched_typed_name_400s_and_does_not_mutate() {
+        User owner = user(OWNER_ID, "Naledi", "Owner");
+        Mandate m = mandate(user(AGENT_ID, "Pieter", "Agent"),
+                onlineLandlord(owner), MandateStatus.PENDING_LANDLORD_APPROVAL);
+        when(mandates.findFirstByProperty_IdOrderByCreatedAtDesc(PROP_ID))
+                .thenReturn(Optional.of(m));
+        when(security.requireUserId()).thenReturn(OWNER_ID);
+
+        assertThatThrownBy(() ->
+                service.approveByLandlord(PROP_ID, new ApproveMandateRequest("Wrong Name")))
+                .isInstanceOf(BadRequestException.class);
+
+        assertThat(m.getStatus()).isEqualTo(MandateStatus.PENDING_LANDLORD_APPROVAL);
+        assertThat(m.getSignedName()).isNull();
+        assertThat(m.getSignedAt()).isNull();
+        verify(events, never()).publishEvent(any());
+    }
+
+    @Test
+    void approve_normalises_case_and_internal_whitespace_when_matching() {
+        User owner = user(OWNER_ID, "Naledi", "Owner");
+        Mandate m = mandate(user(AGENT_ID, "Pieter", "Agent"),
+                onlineLandlord(owner), MandateStatus.PENDING_LANDLORD_APPROVAL);
+        when(mandates.findFirstByProperty_IdOrderByCreatedAtDesc(PROP_ID))
+                .thenReturn(Optional.of(m));
+        when(security.requireUserId()).thenReturn(OWNER_ID);
+
+        // "  naledi   owner " → normalised matches "Naledi Owner". Stored
+        // verbatim (with surrounding whitespace trimmed) so the PDF
+        // shows the landlord's typed casing, not the registered form.
+        service.approveByLandlord(PROP_ID, new ApproveMandateRequest("  naledi   owner "));
+
+        assertThat(m.getStatus()).isEqualTo(MandateStatus.ACTIVE);
+        assertThat(m.getSignedName()).isEqualTo("naledi   owner");
     }
 
     @Test
@@ -95,7 +137,7 @@ class MandateServiceTest {
                 .thenReturn(Optional.of(m));
         when(security.requireUserId()).thenReturn(UUID.randomUUID());
 
-        assertThatThrownBy(() -> service.approveByLandlord(PROP_ID))
+        assertThatThrownBy(() -> service.approveByLandlord(PROP_ID, VALID_APPROVE))
                 .isInstanceOf(ForbiddenException.class);
         verify(events, never()).publishEvent(any());
     }
@@ -113,7 +155,7 @@ class MandateServiceTest {
                 .thenReturn(Optional.of(m));
         when(security.requireUserId()).thenReturn(OWNER_ID);
 
-        assertThatThrownBy(() -> service.approveByLandlord(PROP_ID))
+        assertThatThrownBy(() -> service.approveByLandlord(PROP_ID, VALID_APPROVE))
                 .isInstanceOf(ForbiddenException.class);
     }
 
@@ -126,7 +168,7 @@ class MandateServiceTest {
                 .thenReturn(Optional.of(m));
         when(security.requireUserId()).thenReturn(OWNER_ID);
 
-        assertThatThrownBy(() -> service.approveByLandlord(PROP_ID))
+        assertThatThrownBy(() -> service.approveByLandlord(PROP_ID, VALID_APPROVE))
                 .isInstanceOf(ConflictException.class);
     }
 

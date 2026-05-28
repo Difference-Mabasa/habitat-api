@@ -47,7 +47,13 @@ public record MandateResponse(
         String signedDownloadUrl,
         String notes,
         OffsetDateTime expiresAt,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        /** Typed name captured at online-flow approve time. Null for
+         *  offline-flow approvals and pre-slice-2 ACTIVE rows. */
+        String signedName,
+        /** Server timestamp of the online approve. Paired with
+         *  {@link #signedName}; null when null. */
+        OffsetDateTime signedAt
 ) {
     public static MandateResponse from(Mandate m) {
         var property = m.getProperty();
@@ -74,7 +80,9 @@ public record MandateResponse(
                         : "/api/v1/properties/" + (property == null ? "" : property.getId()) + "/mandate/signed",
                 m.getNotes(),
                 m.getExpiresAt(),
-                m.getCreatedAt()
+                m.getCreatedAt(),
+                m.getSignedName(),
+                m.getSignedAt()
         );
     }
 }

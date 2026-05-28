@@ -68,7 +68,9 @@ class MandatesControllerTest {
                 .andExpect(jsonPath("$.content[0].propertyTitle").value("Sandton Villa"))
                 .andExpect(jsonPath("$.content[0].propertySuburb").value("Sandton"))
                 .andExpect(jsonPath("$.content[0].mandateType").value("FULL_MANAGEMENT"))
-                .andExpect(jsonPath("$.content[0].status").value("PENDING_LANDLORD_APPROVAL"));
+                .andExpect(jsonPath("$.content[0].status").value("PENDING_LANDLORD_APPROVAL"))
+                .andExpect(jsonPath("$.content[0].signedName").value("Thandi Mokoena"))
+                .andExpect(jsonPath("$.content[0].signedAt").value("2026-05-28T15:00:00Z"));
     }
 
     @Test
@@ -121,7 +123,9 @@ class MandatesControllerTest {
                 null,
                 "Verifying.",
                 null,
-                OffsetDateTime.parse("2026-05-28T13:26:27Z")
+                OffsetDateTime.parse("2026-05-28T13:26:27Z"),
+                "Thandi Mokoena",
+                OffsetDateTime.parse("2026-05-28T15:00:00Z")
         );
     }
 }

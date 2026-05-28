@@ -1,6 +1,7 @@
 package com.habitat.api.controller;
 
 import com.habitat.api.constants.ApiRoutes;
+import com.habitat.api.dto.mandate.ApproveMandateRequest;
 import com.habitat.api.dto.mandate.IssueMandateRequest;
 import com.habitat.api.dto.mandate.MandateResponse;
 import com.habitat.api.service.BrowserRendererService;
@@ -84,13 +85,18 @@ public class MandateController {
     }
 
     /**
-     * Online landlord approves the mandate from /my-mandates. 403
-     * unless the caller is the resolved owner User on
-     * {@code property.landlord}.
+     * Online landlord approves + e-signs the mandate from
+     * /mandate-approvals. Body carries the typed name; the service
+     * validates it matches the registered profile before flipping
+     * status to ACTIVE. 403 unless the caller is the resolved owner
+     * User on {@code property.landlord}.
      */
     @PostMapping("/approve")
-    public MandateResponse approve(@PathVariable UUID propertyId) {
-        return mandates.approveByLandlord(propertyId);
+    public MandateResponse approve(
+            @PathVariable UUID propertyId,
+            @Valid @RequestBody ApproveMandateRequest req
+    ) {
+        return mandates.approveByLandlord(propertyId, req);
     }
 
     /** Online landlord rejects the mandate. Same authorization as approve. */

@@ -3,6 +3,7 @@ package com.habitat.api.service;
 import com.habitat.api.constants.ErrorMessages;
 import com.habitat.api.constants.StorageConstants;
 import com.habitat.api.dto.PageResponse;
+import com.habitat.api.dto.mandate.ApproveMandateRequest;
 import com.habitat.api.dto.mandate.IssueMandateRequest;
 import com.habitat.api.dto.mandate.MandateResponse;
 import com.habitat.api.entity.Landlord;
@@ -16,6 +17,7 @@ import com.habitat.api.event.MandateActiveEvent;
 import com.habitat.api.event.MandateApprovedEvent;
 import com.habitat.api.event.MandateIssuedEvent;
 import com.habitat.api.event.MandateRejectedEvent;
+import com.habitat.api.exception.BadRequestException;
 import com.habitat.api.exception.ConflictException;
 import com.habitat.api.exception.ForbiddenException;
 import com.habitat.api.exception.ResourceNotFoundException;
@@ -36,6 +38,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -174,26 +177,52 @@ public class MandateService {
     }
 
     /**
-     * Online landlord approves the mandate. Caller must be the
-     * resolved owner User on {@code property.landlord} — anyone
-     * else gets 403. Transitions PENDING_LANDLORD_APPROVAL → ACTIVE
-     * and publishes both {@link MandateApprovedEvent} (so the agent
-     * hears about the approval) and {@link MandateActiveEvent} (the
-     * terminal-state acknowledgement consumed by both parties).
+     * Online landlord approves the mandate by typing their full
+     * registered name as the e-signature. Caller must be the resolved
+     * owner User on {@code property.landlord} — anyone else gets 403.
+     * The typed name is normalised (trimmed, internal whitespace
+     * collapsed, case-folded) and compared against the landlord's
+     * registered first + surname; mismatch is a 400 so accidental
+     * clicks / scripted approvals can't slip through even if the
+     * client-side check is bypassed.
+     *
+     * <p>Transitions PENDING_LANDLORD_APPROVAL → ACTIVE and stores
+     * the typed name + server timestamp on the row for the audit
+     * trail. Publishes {@link MandateApprovedEvent} + {@link MandateActiveEvent}
+     * (terminal-state acknowledgement) — unchanged from the
+     * pre-signing path.
      */
     @Transactional
-    public MandateResponse approveByLandlord(UUID propertyId) {
+    public MandateResponse approveByLandlord(UUID propertyId, ApproveMandateRequest req) {
         Mandate m = mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.MANDATE_NOT_FOUND));
         requireLandlordCaller(m);
         if (m.getStatus() != MandateStatus.PENDING_LANDLORD_APPROVAL) {
             throw new ConflictException(ErrorMessages.MANDATE_NOT_READY_FOR_LANDLORD_DECISION);
         }
+
+        User landlordUser = m.getProperty().getLandlord().getUser();
+        String expected = normaliseName(
+                (landlordUser.getFirstName() == null ? "" : landlordUser.getFirstName())
+                        + " "
+                        + (landlordUser.getSurname() == null ? "" : landlordUser.getSurname()));
+        String typed = normaliseName(req.signedName());
+        if (expected.isEmpty() || !expected.equals(typed)) {
+            throw new BadRequestException(ErrorMessages.MANDATE_SIGNED_NAME_MISMATCH);
+        }
+
+        m.setSignedName(req.signedName().trim());
+        m.setSignedAt(OffsetDateTime.now());
         m.setStatus(MandateStatus.ACTIVE);
-        log.info("mandate {} approved by landlord — status ACTIVE", m.getId());
+        log.info("mandate {} approved + e-signed by landlord — status ACTIVE", m.getId());
         events.publishEvent(new MandateApprovedEvent(m.getId()));
         events.publishEvent(new MandateActiveEvent(m.getId()));
         return MandateResponse.from(m);
+    }
+
+    private static String normaliseName(String s) {
+        if (s == null) return "";
+        return s.trim().toLowerCase().replaceAll("\\s+", " ");
     }
 
     /**

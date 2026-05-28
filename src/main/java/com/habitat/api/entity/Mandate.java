@@ -79,4 +79,14 @@ public class Mandate extends BaseEntity {
 
     @Column(name = "expires_at")
     private OffsetDateTime expiresAt;
+
+    /** Typed name captured from the online landlord at approve time.
+     *  Null for offline-flow approvals and pre-slice-2 ACTIVE rows. */
+    @Column(name = "signed_name", length = 120)
+    private String signedName;
+
+    /** Server timestamp of the online approve. Paired with
+     *  {@link #signedName}; null when null. */
+    @Column(name = "signed_at")
+    private OffsetDateTime signedAt;
 }
