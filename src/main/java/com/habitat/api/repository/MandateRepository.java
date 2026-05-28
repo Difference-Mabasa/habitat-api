@@ -2,9 +2,10 @@ package com.habitat.api.repository;
 
 import com.habitat.api.entity.Mandate;
 import com.habitat.api.enums.MandateStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,6 +20,6 @@ public interface MandateRepository extends JpaRepository<Mandate, UUID> {
      * Landlord row, and the mandate's still at
      * PENDING_LANDLORD_APPROVAL. Drives /mandate-approvals.
      */
-    List<Mandate> findByStatusAndProperty_Landlord_User_IdOrderByCreatedAtDesc(
-            MandateStatus status, UUID userId);
+    Page<Mandate> findByStatusAndProperty_Landlord_User_IdOrderByCreatedAtDesc(
+            MandateStatus status, UUID userId, Pageable pageable);
 }

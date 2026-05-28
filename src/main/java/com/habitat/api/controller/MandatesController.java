@@ -1,14 +1,14 @@
 package com.habitat.api.controller;
 
 import com.habitat.api.constants.ApiRoutes;
+import com.habitat.api.dto.PageResponse;
 import com.habitat.api.dto.mandate.MandateResponse;
 import com.habitat.api.service.MandateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 /**
  * Cross-property mandate views — the inbox-style endpoints that
@@ -26,10 +26,14 @@ public class MandatesController {
     /**
      * Mandates pending the caller's landlord-side approval. Powers
      * /mandate-approvals — the CTA target on
-     * MANDATE_PENDING_LANDLORD_APPROVAL notifications.
+     * MANDATE_PENDING_LANDLORD_APPROVAL notifications. Paginated;
+     * page size capped at 100 by the global PageSizeFilter.
      */
     @GetMapping("/awaiting-my-approval")
-    public List<MandateResponse> awaitingMyApproval() {
-        return mandates.listAwaitingMyApproval();
+    public PageResponse<MandateResponse> awaitingMyApproval(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return mandates.listAwaitingMyApproval(page, size);
     }
 }

@@ -1,5 +1,7 @@
 package com.habitat.api.service;
 
+import com.habitat.api.dto.PageResponse;
+import com.habitat.api.dto.mandate.MandateResponse;
 import com.habitat.api.entity.Landlord;
 import com.habitat.api.entity.Mandate;
 import com.habitat.api.entity.Property;
@@ -16,19 +18,26 @@ import com.habitat.api.repository.MandateRepository;
 import com.habitat.api.security.SecurityUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -150,6 +159,60 @@ class MandateServiceTest {
         assertThatThrownBy(() -> service.rejectByLandlord(PROP_ID))
                 .isInstanceOf(ForbiddenException.class);
         verify(events, never()).publishEvent(any());
+    }
+
+    // ── listAwaitingMyApproval (paginated) ───────────────────────────
+
+    @Test
+    void list_returns_paged_mandates_for_landlord() {
+        User owner = user(OWNER_ID, "Naledi", "Owner");
+        Mandate m = mandate(user(AGENT_ID, "Pieter", "Agent"),
+                onlineLandlord(owner), MandateStatus.PENDING_LANDLORD_APPROVAL);
+        when(security.requireUserId()).thenReturn(OWNER_ID);
+        Page<Mandate> page = new PageImpl<>(List.of(m), PageRequest.of(0, 20), 1);
+        when(mandates.findByStatusAndProperty_Landlord_User_IdOrderByCreatedAtDesc(
+                eq(MandateStatus.PENDING_LANDLORD_APPROVAL), eq(OWNER_ID), any(Pageable.class)))
+                .thenReturn(page);
+
+        PageResponse<MandateResponse> result = service.listAwaitingMyApproval(0, 20);
+
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.content().get(0).propertyId()).isEqualTo(PROP_ID);
+        assertThat(result.page()).isEqualTo(0);
+        assertThat(result.size()).isEqualTo(20);
+        assertThat(result.totalElements()).isEqualTo(1L);
+        assertThat(result.totalPages()).isEqualTo(1);
+    }
+
+    @Test
+    void list_clamps_size_above_100_to_100() {
+        when(security.requireUserId()).thenReturn(OWNER_ID);
+        when(mandates.findByStatusAndProperty_Landlord_User_IdOrderByCreatedAtDesc(
+                any(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 100), 0));
+
+        service.listAwaitingMyApproval(0, 500);
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(mandates).findByStatusAndProperty_Landlord_User_IdOrderByCreatedAtDesc(
+                eq(MandateStatus.PENDING_LANDLORD_APPROVAL), eq(OWNER_ID), captor.capture());
+        assertThat(captor.getValue().getPageSize()).isEqualTo(100);
+    }
+
+    @Test
+    void list_clamps_negative_page_to_zero_and_zero_size_to_one() {
+        when(security.requireUserId()).thenReturn(OWNER_ID);
+        when(mandates.findByStatusAndProperty_Landlord_User_IdOrderByCreatedAtDesc(
+                any(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 1), 0));
+
+        service.listAwaitingMyApproval(-5, 0);
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(mandates).findByStatusAndProperty_Landlord_User_IdOrderByCreatedAtDesc(
+                any(), any(), captor.capture());
+        assertThat(captor.getValue().getPageNumber()).isEqualTo(0);
+        assertThat(captor.getValue().getPageSize()).isEqualTo(1);
     }
 
     // ── helpers ──────────────────────────────────────────────────────

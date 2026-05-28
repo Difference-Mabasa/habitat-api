@@ -2,6 +2,7 @@ package com.habitat.api.service;
 
 import com.habitat.api.constants.ErrorMessages;
 import com.habitat.api.constants.StorageConstants;
+import com.habitat.api.dto.PageResponse;
 import com.habitat.api.dto.mandate.IssueMandateRequest;
 import com.habitat.api.dto.mandate.MandateResponse;
 import com.habitat.api.entity.Landlord;
@@ -23,6 +24,9 @@ import com.habitat.api.repository.PropertyRepository;
 import com.habitat.api.repository.UserRepository;
 import com.habitat.api.security.SecurityUtils;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import com.habitat.api.storage.StorageService;
 import com.habitat.api.storage.StoredFile;
 import com.habitat.api.storage.StoredResource;
@@ -32,7 +36,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -86,15 +89,18 @@ public class MandateService {
      * Mandates pending the calling user's landlord-side approval.
      * Drives the /mandate-approvals inbox the
      * MANDATE_PENDING_LANDLORD_APPROVAL notification's CTA lands on.
-     * Returns empty when the caller is OFFLINE or has no mandates.
+     * Returns an empty page when the caller is OFFLINE or has no
+     * pending mandates. Page size is capped at 100 (mirrors
+     * {@link PropertyService#listManagedByMe}); the global
+     * PageSizeFilter enforces the same ceiling on the wire.
      */
     @Transactional(readOnly = true)
-    public List<MandateResponse> listAwaitingMyApproval() {
+    public PageResponse<MandateResponse> listAwaitingMyApproval(int page, int size) {
         UUID me = security.requireUserId();
-        return mandates.findByStatusAndProperty_Landlord_User_IdOrderByCreatedAtDesc(
-                MandateStatus.PENDING_LANDLORD_APPROVAL, me).stream()
-                .map(MandateResponse::from)
-                .toList();
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 100)));
+        Page<Mandate> p = mandates.findByStatusAndProperty_Landlord_User_IdOrderByCreatedAtDesc(
+                MandateStatus.PENDING_LANDLORD_APPROVAL, me, pageable);
+        return PageResponse.from(p.map(MandateResponse::from));
     }
 
     /**
