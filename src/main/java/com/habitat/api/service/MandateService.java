@@ -573,6 +573,10 @@ public class MandateService {
                 Map<String, Object> reqPayload = new HashMap<>();
                 reqPayload.put("comment", cr.getComment());
                 reqPayload.put("itemCount", cr.getItems() == null ? 0 : cr.getItems().size());
+                // Surface the items themselves so the landlord's
+                // round-2+ diff banner can compute addressed vs
+                // unaddressed against the current mandate state.
+                reqPayload.put("items", cr.getItems() == null ? List.of() : cr.getItems());
                 events.add(new HistoryEventResponse(
                         HistoryEventKind.CHANGES_REQUESTED,
                         cr.getRequestedAt(),
