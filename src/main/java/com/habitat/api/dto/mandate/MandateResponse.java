@@ -24,6 +24,19 @@ public record MandateResponse(
          *  Null is unexpected here — every mandate-issued property
          *  has a landlord — but kept defensive. */
         LandlordRef landlord,
+        /** Agent's first name, snapshotted from the User row. Drives
+         *  the inbox row "who's asking" line without forcing the UI
+         *  to fetch the property per row to get manager identity. */
+        String agentFirstName,
+        /** Agent's surname, snapshotted. See {@link #agentFirstName}. */
+        String agentSurname,
+        /** Property title, snapshotted from the Property row. Lets
+         *  /mandate-approvals show "what's this about" without
+         *  fetching PropertyDetail per row. */
+        String propertyTitle,
+        /** Property suburb, snapshotted; nullable since
+         *  {@code Property.suburb} is nullable. */
+        String propertySuburb,
         MandateType mandateType,
         MandateStatus status,
         boolean agentAttested,
@@ -39,11 +52,16 @@ public record MandateResponse(
     public static MandateResponse from(Mandate m) {
         var property = m.getProperty();
         var landlord = property == null ? null : property.getLandlord();
+        var agent = m.getAgent();
         return new MandateResponse(
                 m.getId(),
                 property == null ? null : property.getId(),
-                m.getAgent() == null ? null : m.getAgent().getId(),
+                agent == null ? null : agent.getId(),
                 LandlordRef.from(landlord),
+                agent == null ? null : agent.getFirstName(),
+                agent == null ? null : agent.getSurname(),
+                property == null ? null : property.getTitle(),
+                property == null ? null : property.getSuburb(),
                 m.getMandateType(),
                 m.getStatus(),
                 m.isAgentAttested(),

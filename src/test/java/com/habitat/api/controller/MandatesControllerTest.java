@@ -63,6 +63,10 @@ class MandatesControllerTest {
                 .andExpect(jsonPath("$.totalPages").value(1))
                 .andExpect(jsonPath("$.content[0].id").value(MANDATE_ID.toString()))
                 .andExpect(jsonPath("$.content[0].propertyId").value(PROP_ID.toString()))
+                .andExpect(jsonPath("$.content[0].agentFirstName").value("Naledi"))
+                .andExpect(jsonPath("$.content[0].agentSurname").value("M."))
+                .andExpect(jsonPath("$.content[0].propertyTitle").value("Sandton Villa"))
+                .andExpect(jsonPath("$.content[0].propertySuburb").value("Sandton"))
                 .andExpect(jsonPath("$.content[0].mandateType").value("FULL_MANAGEMENT"))
                 .andExpect(jsonPath("$.content[0].status").value("PENDING_LANDLORD_APPROVAL"));
     }
@@ -105,6 +109,10 @@ class MandatesControllerTest {
                 PROP_ID,
                 AGENT_ID,
                 landlord,
+                "Naledi",
+                "M.",
+                "Sandton Villa",
+                "Sandton",
                 MandateType.FULL_MANAGEMENT,
                 MandateStatus.PENDING_LANDLORD_APPROVAL,
                 false,
