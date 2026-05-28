@@ -1,10 +1,9 @@
 package com.habitat.api.controller;
 
 import com.habitat.api.constants.ApiRoutes;
-import com.habitat.api.dto.mandate.ApproveMandateRequest;
 import com.habitat.api.dto.mandate.IssueMandateRequest;
+import com.habitat.api.dto.mandate.MandateHistoryResponse;
 import com.habitat.api.dto.mandate.MandateResponse;
-import com.habitat.api.dto.mandate.RejectMandateRequest;
 import com.habitat.api.service.BrowserRendererService;
 import com.habitat.api.service.MandateService;
 import com.habitat.api.storage.StoredResource;
@@ -16,15 +15,12 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.IOException;
@@ -32,9 +28,16 @@ import java.io.InputStream;
 import java.util.UUID;
 
 /**
- * Mandate endpoints, scoped to a property. Authentication-gated and
- * limited to the property's manager / landlord / admin via
- * {@code PropertyService.requireCanEdit}.
+ * Property-scoped mandate endpoints — the ones that genuinely operate
+ * on "the property's mandate" rather than a specific mandate row:
+ * fetching the current mandate, issuing a fresh one, downloading the
+ * (most-recent) PDF, and reading the cross-round history timeline.
+ *
+ * <p>Mandate-scoped actions (approve / reject / request-changes /
+ * resubmit / withdraw / email / upload-signed) live on
+ * {@link MandatesController} at {@code /mandates/{mandateId}/...} —
+ * the caller already knows the mandate's UUID and shouldn't have to
+ * round-trip a "find current" lookup on every action.
  */
 @RestController
 @RequestMapping(ApiRoutes.PROPERTIES + "/{propertyId}/mandate")
@@ -56,7 +59,9 @@ public class MandateController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    /** Issue a fresh mandate. Body carries type, fee, and landlord identity. */
+    /** Issue a fresh mandate. Body carries type, fee, and landlord identity.
+     *  The V41 invariant blocks issuing when the property already has a
+     *  non-terminal mandate; agents must withdraw before re-mandating. */
     @PutMapping
     @ResponseStatus(HttpStatus.CREATED)
     public MandateResponse issue(
@@ -67,58 +72,26 @@ public class MandateController {
     }
 
     /**
-     * Email-to-landlord stub. Returns 204 — the agent's UI shows a
-     * success toast. Real email delivery lands in Phase 8.
+     * Slice 4: chronological event timeline spanning every mandate row
+     * the property has ever had. Accessible to anyone with edit access
+     * on the property (agent or landlord-as-owner).
      */
-    @PostMapping("/email")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void emailToLandlord(@PathVariable UUID propertyId) {
-        mandates.emailToLandlord(propertyId);
-    }
-
-    /** Upload the offline-signed mandate PDF. */
-    @PostMapping(value = "/signed", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public MandateResponse uploadSigned(
-            @PathVariable UUID propertyId,
-            @RequestPart("file") MultipartFile file
-    ) {
-        return mandates.uploadSigned(propertyId, file);
+    @GetMapping("/history")
+    public MandateHistoryResponse history(@PathVariable UUID propertyId) {
+        return mandates.getHistory(propertyId);
     }
 
     /**
-     * Online landlord approves + e-signs the mandate from
-     * /mandate-approvals. Body carries the typed name; the service
-     * validates it matches the registered profile before flipping
-     * status to ACTIVE. 403 unless the caller is the resolved owner
-     * User on {@code property.landlord}.
-     */
-    @PostMapping("/approve")
-    public MandateResponse approve(
-            @PathVariable UUID propertyId,
-            @Valid @RequestBody ApproveMandateRequest req
-    ) {
-        return mandates.approveByLandlord(propertyId, req);
-    }
-
-    /**
-     * Online landlord rejects the mandate with a reason the agent
-     * reads before revising + re-issuing (slice 4). Same authorization
-     * as approve. The DTO enforces a 4–1000 char reason.
-     */
-    @PostMapping("/reject")
-    public MandateResponse reject(
-            @PathVariable UUID propertyId,
-            @Valid @RequestBody RejectMandateRequest req
-    ) {
-        return mandates.rejectByLandlord(propertyId, req);
-    }
-
-    /**
-     * Download the generated mandate PDF. Rendered on-demand via
+     * Download the most-recent mandate's PDF. Rendered on-demand via
      * headless Chromium against the React {@code /print/mandate/:id}
      * route — the on-screen design IS the document, so the PDF tracks
      * the latest mandate state (status, attestation, sigs) without a
      * regenerate-and-store step.
+     *
+     * <p>This serves the most-recent mandate (in-flight if one exists,
+     * else the latest terminal row) so the download mirrors what the
+     * detail screen is showing. Mandate-scoped downloads for arbitrary
+     * historical rows are a future addition if needed.
      */
     @GetMapping("/pdf")
     public ResponseEntity<byte[]> downloadPdf(
@@ -135,7 +108,7 @@ public class MandateController {
                 .body(pdf);
     }
 
-    /** Download the signed mandate PDF (offline flow). */
+    /** Download the most-recent mandate's signed PDF (offline flow). */
     @GetMapping("/signed")
     public ResponseEntity<StreamingResponseBody> downloadSigned(@PathVariable UUID propertyId) {
         StoredResource r = mandates.openSignedPdf(propertyId);

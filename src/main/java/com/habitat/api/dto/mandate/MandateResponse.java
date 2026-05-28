@@ -2,6 +2,7 @@ package com.habitat.api.dto.mandate;
 
 import com.habitat.api.dto.landlord.LandlordRef;
 import com.habitat.api.entity.Mandate;
+import com.habitat.api.entity.MandateChangeRequest;
 import com.habitat.api.enums.MandateStatus;
 import com.habitat.api.enums.MandateType;
 
@@ -59,9 +60,29 @@ public record MandateResponse(
         String rejectionReason,
         /** Server timestamp of the online reject. Paired with
          *  {@link #rejectionReason}; null when null. */
-        OffsetDateTime rejectedAt
+        OffsetDateTime rejectedAt,
+        /** Slice 4: most recent OPEN change request for this mandate.
+         *  Drives the inbox + detail-screen panels on both sides
+         *  when status is CHANGES_REQUESTED. Null otherwise. */
+        ChangeRequestResponse latestChangeRequest,
+        /** Slice 4: distinguishes landlord-reject (this is null on
+         *  agent-withdraw) from agent-withdraw (this is non-null). */
+        java.util.UUID withdrawnByUserId,
+        /** Slice 4: free-text reason supplied at agent-withdraw time.
+         *  Null on the landlord-reject path. */
+        String withdrawnReason,
+        /** Slice 4: server timestamp of the agent-withdraw. Paired
+         *  with {@link #withdrawnReason}; null when null. */
+        OffsetDateTime withdrawnAt
 ) {
+    /** Use when the latest open change request is irrelevant or not
+     *  yet loaded (paginated list endpoints). The detail flow uses
+     *  {@link #from(Mandate, MandateChangeRequest)} instead. */
     public static MandateResponse from(Mandate m) {
+        return from(m, null);
+    }
+
+    public static MandateResponse from(Mandate m, MandateChangeRequest latestOpen) {
         var property = m.getProperty();
         var landlord = property == null ? null : property.getLandlord();
         var agent = m.getAgent();
@@ -90,7 +111,11 @@ public record MandateResponse(
                 m.getSignedName(),
                 m.getSignedAt(),
                 m.getRejectionReason(),
-                m.getRejectedAt()
+                m.getRejectedAt(),
+                latestOpen == null ? null : ChangeRequestResponse.from(latestOpen),
+                m.getWithdrawnByUserId(),
+                m.getWithdrawnReason(),
+                m.getWithdrawnAt()
         );
     }
 }

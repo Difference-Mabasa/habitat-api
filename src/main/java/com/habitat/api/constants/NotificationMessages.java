@@ -109,6 +109,37 @@ public final class NotificationMessages {
     public static final String MANDATE_APPROVED_ACTION_LABEL =
             "Open property";
 
+    // ── MANDATE — CHANGES REQUESTED (by landlord, slice 4) ─────────────
+    public static final String MANDATE_CHANGES_REQUESTED_TITLE =
+            "Mandate changes requested";
+    public static final String MANDATE_CHANGES_REQUESTED_BODY =
+            "{landlordName} wants the mandate for {propertyTitle} revised "
+                    + "before signing. Open the mandate to read the request — "
+                    + "you can apply the suggested changes, revise from scratch, "
+                    + "or withdraw.";
+    public static final String MANDATE_CHANGES_REQUESTED_ACTION_LABEL =
+            "Open mandate";
+
+    // ── MANDATE — RESUBMITTED (by agent, slice 4) ──────────────────────
+    public static final String MANDATE_RESUBMITTED_TITLE =
+            "Mandate revised — review again";
+    public static final String MANDATE_RESUBMITTED_BODY =
+            "{agentName} has revised the mandate for {propertyTitle} based "
+                    + "on your change request. Review the updated terms and "
+                    + "approve to publish — or request further changes.";
+    public static final String MANDATE_RESUBMITTED_ACTION_LABEL =
+            "Review mandate";
+
+    // ── MANDATE — WITHDRAWN (by agent, slice 4) ────────────────────────
+    public static final String MANDATE_WITHDRAWN_TITLE =
+            "Mandate withdrawn";
+    public static final String MANDATE_WITHDRAWN_BODY =
+            "{agentName} has withdrawn the mandate for {propertyTitle}. The "
+                    + "listing stays in DRAFT and a fresh mandate from any "
+                    + "agent will need to be approved before it can publish.";
+    public static final String MANDATE_WITHDRAWN_ACTION_LABEL =
+            "Open property";
+
     // ── MANDATE — REJECTED (by landlord) ────────────────────────────────
     public static final String MANDATE_REJECTED_TITLE =
             "Mandate rejected";

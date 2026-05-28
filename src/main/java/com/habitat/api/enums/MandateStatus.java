@@ -22,6 +22,11 @@ public enum MandateStatus {
     PENDING_LANDLORD_APPROVAL,
     PENDING_OFFLINE_SIGNATURE,
     PENDING_AGENT_ACCEPTANCE,
+    /** Slice 4: landlord has asked the agent to revise the terms
+     *  before signing. The mandate sits here until the agent
+     *  resubmits (back to PENDING_LANDLORD_APPROVAL) or withdraws
+     *  (forward to REJECTED). */
+    CHANGES_REQUESTED,
     ACTIVE,
     REJECTED,
     EXPIRED

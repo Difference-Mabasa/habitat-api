@@ -102,6 +102,34 @@ class MandatesControllerTest {
         verify(mandates).listAwaitingMyApproval(eq(0), eq(20));
     }
 
+    @Test
+    void mine_returns_paged_response_and_forwards_status_filter() throws Exception {
+        when(mandates.listMineAsAgent(MandateStatus.CHANGES_REQUESTED, 0, 20)).thenReturn(
+                PageResponse.<MandateResponse>builder()
+                        .content(List.of(sampleResponse()))
+                        .page(0).size(20).totalElements(1L).totalPages(1).build());
+
+        mvc.perform(get(ApiRoutes.MANDATES + "/mine")
+                        .param("status", "CHANGES_REQUESTED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(MANDATE_ID.toString()));
+
+        verify(mandates).listMineAsAgent(eq(MandateStatus.CHANGES_REQUESTED), eq(0), eq(20));
+    }
+
+    @Test
+    void mine_omits_status_filter_when_not_provided() throws Exception {
+        when(mandates.listMineAsAgent(null, 0, 20)).thenReturn(
+                PageResponse.<MandateResponse>builder()
+                        .content(List.of()).page(0).size(20).totalElements(0L).totalPages(0).build());
+
+        mvc.perform(get(ApiRoutes.MANDATES + "/mine"))
+                .andExpect(status().isOk());
+
+        verify(mandates).listMineAsAgent(eq((MandateStatus) null), eq(0), eq(20));
+    }
+
     private static MandateResponse sampleResponse() {
         LandlordRef landlord = new LandlordRef(
                 LANDLORD_ID, LandlordType.ONLINE, OWNER_USER,
@@ -126,6 +154,10 @@ class MandatesControllerTest {
                 OffsetDateTime.parse("2026-05-28T13:26:27Z"),
                 "Thandi Mokoena",
                 OffsetDateTime.parse("2026-05-28T15:00:00Z"),
+                null,
+                null,
+                null,
+                null,
                 null,
                 null
         );

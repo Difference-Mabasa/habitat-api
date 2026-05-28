@@ -38,6 +38,12 @@ public final class ErrorMessages {
             "This mandate isn't awaiting your approval right now.";
     public static final String MANDATE_SIGNED_NAME_MISMATCH =
             "The typed name doesn't match your registered name. Please type your full registered name exactly.";
+    public static final String MANDATE_NOT_READY_FOR_RESUBMIT =
+            "This mandate isn't awaiting a revision right now.";
+    public static final String MANDATE_NOT_READY_FOR_WITHDRAW =
+            "This mandate can't be withdrawn from its current state.";
+    public static final String MANDATE_ALREADY_IN_FLIGHT =
+            "This property already has an active mandate. Wait for the landlord to act, or withdraw the current mandate before issuing a new one.";
     public static final String VIEWING_NOT_FOUND = "Viewing not found.";
     public static final String VIEWING_INVALID_TRANSITION =
             "That viewing can't move to that state right now.";

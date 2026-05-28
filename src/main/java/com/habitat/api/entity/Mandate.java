@@ -100,4 +100,19 @@ public class Mandate extends BaseEntity {
      *  {@link #rejectionReason}; null when null. */
     @Column(name = "rejected_at")
     private OffsetDateTime rejectedAt;
+
+    /** Slice 4: distinguishes the landlord-reject path (slice 3) from
+     *  the agent-withdraw path (slice 4). Both end at REJECTED but
+     *  the actor + UI copy differ. */
+    @Column(name = "rejected_by_user_id")
+    private java.util.UUID rejectedByUserId;
+
+    @Column(name = "withdrawn_reason", columnDefinition = "TEXT")
+    private String withdrawnReason;
+
+    @Column(name = "withdrawn_at")
+    private OffsetDateTime withdrawnAt;
+
+    @Column(name = "withdrawn_by_user_id")
+    private java.util.UUID withdrawnByUserId;
 }

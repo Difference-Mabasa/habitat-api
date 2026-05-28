@@ -107,6 +107,29 @@ public enum NotificationType {
     MANDATE_ACTIVE(NotificationCategory.MESSAGING,
             EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
 
+    /**
+     * Slice 4: sent to the agent when the online landlord opens a
+     * structured change request before signing. The agent's resolution
+     * panel surfaces the items + comment for one-click apply or revise.
+     */
+    MANDATE_CHANGES_REQUESTED(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Slice 4: sent to the landlord when the agent resubmits a revised
+     * mandate. The detail screen shows a diff banner highlighting what
+     * the agent did vs what was requested.
+     */
+    MANDATE_RESUBMITTED(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
+    /**
+     * Slice 4: sent to the landlord when the agent withdraws a pending
+     * mandate (terminal, no more rounds).
+     */
+    MANDATE_WITHDRAWN(NotificationCategory.MESSAGING,
+            EnumSet.of(NotificationChannel.IN_APP, NotificationChannel.EMAIL)),
+
     // ── Application lifecycle ─────────────────────────────────────────
 
     /**

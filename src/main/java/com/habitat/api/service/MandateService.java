@@ -4,24 +4,38 @@ import com.habitat.api.constants.ErrorMessages;
 import com.habitat.api.constants.StorageConstants;
 import com.habitat.api.dto.PageResponse;
 import com.habitat.api.dto.mandate.ApproveMandateRequest;
+import com.habitat.api.dto.mandate.ChangeItemRequest;
+import com.habitat.api.dto.mandate.HistoryEventResponse;
 import com.habitat.api.dto.mandate.IssueMandateRequest;
+import com.habitat.api.dto.mandate.MandateHistoryResponse;
 import com.habitat.api.dto.mandate.MandateResponse;
 import com.habitat.api.dto.mandate.RejectMandateRequest;
+import com.habitat.api.dto.mandate.RequestChangesRequest;
+import com.habitat.api.dto.mandate.ResubmitMandateRequest;
+import com.habitat.api.dto.mandate.WithdrawMandateRequest;
+import com.habitat.api.entity.ChangeItem;
 import com.habitat.api.entity.Landlord;
 import com.habitat.api.entity.Mandate;
+import com.habitat.api.entity.MandateChangeRequest;
 import com.habitat.api.entity.Property;
 import com.habitat.api.entity.User;
+import com.habitat.api.enums.ChangeRequestStatus;
+import com.habitat.api.enums.HistoryEventKind;
 import com.habitat.api.enums.LandlordType;
 import com.habitat.api.enums.ListingMode;
 import com.habitat.api.enums.MandateStatus;
 import com.habitat.api.event.MandateActiveEvent;
 import com.habitat.api.event.MandateApprovedEvent;
+import com.habitat.api.event.MandateChangesRequestedEvent;
 import com.habitat.api.event.MandateIssuedEvent;
 import com.habitat.api.event.MandateRejectedEvent;
+import com.habitat.api.event.MandateResubmittedEvent;
+import com.habitat.api.event.MandateWithdrawnEvent;
 import com.habitat.api.exception.BadRequestException;
 import com.habitat.api.exception.ConflictException;
 import com.habitat.api.exception.ForbiddenException;
 import com.habitat.api.exception.ResourceNotFoundException;
+import com.habitat.api.repository.MandateChangeRequestRepository;
 import com.habitat.api.repository.MandateRepository;
 import com.habitat.api.repository.PropertyRepository;
 import com.habitat.api.repository.UserRepository;
@@ -39,7 +53,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -72,7 +91,14 @@ import java.util.UUID;
 @Slf4j
 public class MandateService {
 
+    /** Statuses that take a mandate out of the in-flight set. Single
+     *  source of truth — used both as the V41 invariant filter and
+     *  as the gate on every action endpoint's "find current" lookup. */
+    private static final java.util.List<MandateStatus> TERMINAL_STATUSES =
+            java.util.List.of(MandateStatus.REJECTED, MandateStatus.EXPIRED);
+
     private final MandateRepository mandates;
+    private final MandateChangeRequestRepository changeRequests;
     private final PropertyRepository properties;
     private final UserRepository users;
     private final PropertyService propertyService;
@@ -82,11 +108,20 @@ public class MandateService {
     private final SecurityUtils security;
     private final ApplicationEventPublisher events;
 
-    /** Most-recent mandate for the property (any status), if any. */
+    /** Most-recent mandate for the property (any status), if any.
+     *  Includes the latest OPEN change request when relevant so the
+     *  detail screens don't need a second round-trip. */
     @Transactional(readOnly = true)
     public Optional<MandateResponse> getForProperty(UUID propertyId) {
         return mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId)
-                .map(MandateResponse::from);
+                .map(m -> MandateResponse.from(m, latestOpenChangeRequest(m)));
+    }
+
+    private MandateChangeRequest latestOpenChangeRequest(Mandate m) {
+        if (m == null) return null;
+        return changeRequests
+                .findFirstByMandate_IdAndStatusOrderByRequestedAtDesc(m.getId(), ChangeRequestStatus.OPEN)
+                .orElse(null);
     }
 
     /**
@@ -124,9 +159,17 @@ public class MandateService {
             throw new ConflictException(ErrorMessages.MANDATE_REQUIRES_AGENT_MODE);
         }
 
-        Optional<Mandate> existing = mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId);
-        if (existing.isPresent() && existing.get().getStatus() == MandateStatus.ACTIVE) {
-            throw new ConflictException(ErrorMessages.MANDATE_NOT_READY_FOR_UPLOAD);
+        // V41 invariant: at most one non-terminal mandate per property.
+        // Terminal rows (REJECTED, EXPIRED) stay around as history, so
+        // a fresh issue after rejection is fine — the new row sits
+        // alongside the old terminal one. Concurrent in-flight
+        // mandates are blocked here AND by the partial unique index;
+        // the service check exists to surface a clean 409 instead of
+        // a 500-shaped constraint violation.
+        boolean hasNonTerminal = mandates.existsByProperty_IdAndStatusNotIn(
+                propertyId, TERMINAL_STATUSES);
+        if (hasNonTerminal) {
+            throw new ConflictException(ErrorMessages.MANDATE_ALREADY_IN_FLIGHT);
         }
 
         UUID agentId = security.requireUserId();
@@ -194,8 +237,8 @@ public class MandateService {
      * pre-signing path.
      */
     @Transactional
-    public MandateResponse approveByLandlord(UUID propertyId, ApproveMandateRequest req) {
-        Mandate m = mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId)
+    public MandateResponse approveByLandlord(UUID mandateId, ApproveMandateRequest req) {
+        Mandate m = mandates.findById(mandateId)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.MANDATE_NOT_FOUND));
         requireLandlordCaller(m);
         if (m.getStatus() != MandateStatus.PENDING_LANDLORD_APPROVAL) {
@@ -239,8 +282,8 @@ public class MandateService {
      * {@link MandateRejectedEvent} unchanged.
      */
     @Transactional
-    public MandateResponse rejectByLandlord(UUID propertyId, RejectMandateRequest req) {
-        Mandate m = mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId)
+    public MandateResponse rejectByLandlord(UUID mandateId, RejectMandateRequest req) {
+        Mandate m = mandates.findById(mandateId)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.MANDATE_NOT_FOUND));
         requireLandlordCaller(m);
         if (m.getStatus() != MandateStatus.PENDING_LANDLORD_APPROVAL) {
@@ -274,8 +317,8 @@ public class MandateService {
      * agent has already attested).
      */
     @Transactional
-    public MandateResponse uploadSigned(UUID propertyId, MultipartFile file) {
-        Mandate m = mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId)
+    public MandateResponse uploadSigned(UUID mandateId, MultipartFile file) {
+        Mandate m = mandates.findById(mandateId)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.MANDATE_NOT_FOUND));
         propertyService.requireCanEdit(m.getProperty());
 
@@ -311,8 +354,8 @@ public class MandateService {
      * log + return the response so the UI button shows success.
      */
     @Transactional(readOnly = true)
-    public void emailToLandlord(UUID propertyId) {
-        Mandate m = mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId)
+    public void emailToLandlord(UUID mandateId) {
+        Mandate m = mandates.findById(mandateId)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.MANDATE_NOT_FOUND));
         propertyService.requireCanEdit(m.getProperty());
         if (m.getMandateDocumentPath() == null) {
@@ -324,7 +367,11 @@ public class MandateService {
         // Real delivery: Resend integration ships in Phase 8.
     }
 
-    /** Streaming handle for the generated mandate PDF. */
+    /** Streaming handle for the generated mandate PDF. Reads the
+     *  most-recent row (in-flight if one exists, else the latest
+     *  terminal) so the download mirrors what the detail screen is
+     *  showing — an agent may legitimately want a PDF of a historical
+     *  rejected mandate for their records. */
     @Transactional(readOnly = true)
     public StoredResource openMandatePdf(UUID propertyId) {
         Mandate m = mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId)
@@ -338,8 +385,9 @@ public class MandateService {
     /**
      * Access check the {@code /mandate/pdf} download endpoint runs
      * before delegating to {@link BrowserRendererService} for an
-     * on-demand Playwright render. Returns nothing — the call's only
-     * job is to throw {@code 404} or {@code 403} when appropriate.
+     * on-demand Playwright render. Mirrors {@link #openMandatePdf} —
+     * accepts the most-recent row so historical PDFs can still be
+     * pulled.
      */
     @Transactional(readOnly = true)
     public void requirePdfReadable(UUID propertyId) {
@@ -348,7 +396,8 @@ public class MandateService {
         propertyService.requireCanEdit(m.getProperty());
     }
 
-    /** Streaming handle for the signed mandate (offline flow). */
+    /** Streaming handle for the signed mandate (offline flow). Same
+     *  most-recent semantics as {@link #openMandatePdf}. */
     @Transactional(readOnly = true)
     public StoredResource openSignedPdf(UUID propertyId) {
         Mandate m = mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId)
@@ -357,5 +406,246 @@ public class MandateService {
         String path = m.getSignedDocumentPath();
         if (path == null) throw new ConflictException(ErrorMessages.MANDATE_SIGNED_NOT_AVAILABLE);
         return storage.open(path);
+    }
+
+    // ── Slice 4 — request-changes / resubmit / withdraw / history ─────────
+
+    /**
+     * Online landlord asks the agent to revise the mandate before
+     * signing. The structured items are snapshotted server-side
+     * (currentValue derived from the mandate, not trusted from the
+     * client) so the audit trail reflects reality. Status flips
+     * PENDING_LANDLORD_APPROVAL → CHANGES_REQUESTED.
+     */
+    @Transactional
+    public MandateResponse requestChanges(UUID mandateId, RequestChangesRequest req) {
+        Mandate m = mandates.findById(mandateId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.MANDATE_NOT_FOUND));
+        requireLandlordCaller(m);
+        if (m.getStatus() != MandateStatus.PENDING_LANDLORD_APPROVAL) {
+            throw new ConflictException(ErrorMessages.MANDATE_NOT_READY_FOR_LANDLORD_DECISION);
+        }
+
+        User landlordUser = m.getProperty().getLandlord().getUser();
+        List<ChangeItem> snapshot = snapshotItems(m, req.items());
+
+        MandateChangeRequest cr = MandateChangeRequest.builder()
+                .mandate(m)
+                .requestedByUser(landlordUser)
+                .requestedAt(OffsetDateTime.now())
+                .comment(req.comment() == null ? null : req.comment().trim())
+                .items(snapshot)
+                .status(ChangeRequestStatus.OPEN)
+                .build();
+        MandateChangeRequest saved = changeRequests.save(cr);
+
+        m.setStatus(MandateStatus.CHANGES_REQUESTED);
+        log.info("mandate {} — landlord requested {} changes (cr {})",
+                m.getId(), snapshot.size(), saved.getId());
+        events.publishEvent(new MandateChangesRequestedEvent(m.getId(), saved.getId()));
+        return MandateResponse.from(m, saved);
+    }
+
+    private static List<ChangeItem> snapshotItems(Mandate m, List<ChangeItemRequest> reqItems) {
+        if (reqItems == null) return List.of();
+        List<ChangeItem> out = new ArrayList<>(reqItems.size());
+        for (ChangeItemRequest r : reqItems) {
+            String current = switch (r.field()) {
+                case FEE -> m.getFeePercent() == null ? "" : m.getFeePercent().toPlainString();
+                case SCOPE -> m.getMandateType() == null ? "" : m.getMandateType().name();
+                case NOTES -> m.getNotes() == null ? "" : m.getNotes();
+            };
+            out.add(new ChangeItem(r.field(), current, r.requestedValue()));
+        }
+        return out;
+    }
+
+    /**
+     * Agent applies a selective patch to the mandate and resubmits
+     * for the landlord's approval. Any OPEN change request is marked
+     * ADDRESSED. Status flips CHANGES_REQUESTED → PENDING_LANDLORD_APPROVAL.
+     */
+    @Transactional
+    public MandateResponse resubmit(UUID mandateId, ResubmitMandateRequest req) {
+        Mandate m = mandates.findById(mandateId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.MANDATE_NOT_FOUND));
+        propertyService.requireCanEdit(m.getProperty());
+        if (m.getStatus() != MandateStatus.CHANGES_REQUESTED) {
+            throw new ConflictException(ErrorMessages.MANDATE_NOT_READY_FOR_RESUBMIT);
+        }
+
+        if (req.mandateType() != null) m.setMandateType(req.mandateType());
+        if (req.feePercent() != null)  m.setFeePercent(req.feePercent());
+        if (req.notes() != null)       m.setNotes(req.notes().trim());
+
+        UUID agentId = security.requireUserId();
+        User agent = users.findById(agentId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.USER_NOT_FOUND));
+        OffsetDateTime now = OffsetDateTime.now();
+        for (MandateChangeRequest cr : changeRequests.findByMandate_IdAndStatus(
+                m.getId(), ChangeRequestStatus.OPEN)) {
+            cr.setStatus(ChangeRequestStatus.ADDRESSED);
+            cr.setResolvedAt(now);
+            cr.setResolvedByUser(agent);
+        }
+
+        m.setStatus(MandateStatus.PENDING_LANDLORD_APPROVAL);
+        log.info("mandate {} resubmitted by agent {} — status PENDING_LANDLORD_APPROVAL",
+                m.getId(), agentId);
+        events.publishEvent(new MandateResubmittedEvent(m.getId()));
+        return MandateResponse.from(m, null);
+    }
+
+    /**
+     * Agent withdraws the mandate from any pending state. Mirrors
+     * slice 3's reject path but the actor is the agent — separate
+     * audit fields keep the two distinguishable.
+     */
+    @Transactional
+    public MandateResponse withdraw(UUID mandateId, WithdrawMandateRequest req) {
+        Mandate m = mandates.findById(mandateId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.MANDATE_NOT_FOUND));
+        propertyService.requireCanEdit(m.getProperty());
+        MandateStatus s = m.getStatus();
+        if (s != MandateStatus.PENDING_LANDLORD_APPROVAL && s != MandateStatus.CHANGES_REQUESTED) {
+            throw new ConflictException(ErrorMessages.MANDATE_NOT_READY_FOR_WITHDRAW);
+        }
+
+        UUID agentId = security.requireUserId();
+        OffsetDateTime now = OffsetDateTime.now();
+        m.setWithdrawnReason(req.reason().trim());
+        m.setWithdrawnAt(now);
+        m.setWithdrawnByUserId(agentId);
+        m.setStatus(MandateStatus.REJECTED);
+
+        for (MandateChangeRequest cr : changeRequests.findByMandate_IdAndStatus(
+                m.getId(), ChangeRequestStatus.OPEN)) {
+            cr.setStatus(ChangeRequestStatus.WITHDRAWN);
+            cr.setResolvedAt(now);
+        }
+
+        log.info("mandate {} withdrawn by agent {} — status REJECTED",
+                m.getId(), agentId);
+        events.publishEvent(new MandateWithdrawnEvent(m.getId()));
+        return MandateResponse.from(m, null);
+    }
+
+    /** Chronological event timeline spanning every mandate row this
+     *  property has ever had (including terminal historical ones).
+     *  V41 enforces at most one non-terminal row per property, but
+     *  re-mandating after rejection inserts a fresh row alongside the
+     *  old REJECTED one — both need to surface on the same timeline
+     *  for the landlord and agent to understand the full back-and-forth. */
+    @Transactional(readOnly = true)
+    public MandateHistoryResponse getHistory(UUID propertyId) {
+        List<Mandate> rows = mandates.findByProperty_IdOrderByCreatedAtAsc(propertyId);
+        if (rows.isEmpty()) {
+            throw new ResourceNotFoundException(ErrorMessages.MANDATE_NOT_FOUND);
+        }
+        // Authorise once on any row's property — they all point to the same one.
+        propertyService.requireCanEdit(rows.get(0).getProperty());
+
+        // Batch every change request across every round in one query
+        // and bucket by mandate id so the per-row loop below stays
+        // O(rows + crs) instead of fanning out queries.
+        Map<UUID, List<MandateChangeRequest>> crsByMandate = new HashMap<>();
+        for (MandateChangeRequest cr : changeRequests.findByMandate_Property_IdOrderByRequestedAtAsc(propertyId)) {
+            crsByMandate
+                    .computeIfAbsent(cr.getMandate().getId(), k -> new ArrayList<>())
+                    .add(cr);
+        }
+
+        List<HistoryEventResponse> events = new ArrayList<>();
+        for (Mandate m : rows) {
+            // ISSUED for each round
+            events.add(new HistoryEventResponse(
+                    HistoryEventKind.ISSUED,
+                    m.getCreatedAt(),
+                    m.getAgent() == null ? null : m.getAgent().getId(),
+                    displayName(m.getAgent()),
+                    Map.of(
+                            "mandateType", m.getMandateType() == null ? "" : m.getMandateType().name(),
+                            "feePercent", m.getFeePercent() == null ? "" : m.getFeePercent().toPlainString())
+            ));
+            // CHANGES_REQUESTED + RESUBMITTED per change request on this row
+            for (MandateChangeRequest cr : crsByMandate.getOrDefault(m.getId(), List.of())) {
+                User by = cr.getRequestedByUser();
+                Map<String, Object> reqPayload = new HashMap<>();
+                reqPayload.put("comment", cr.getComment());
+                reqPayload.put("itemCount", cr.getItems() == null ? 0 : cr.getItems().size());
+                events.add(new HistoryEventResponse(
+                        HistoryEventKind.CHANGES_REQUESTED,
+                        cr.getRequestedAt(),
+                        by == null ? null : by.getId(),
+                        displayName(by),
+                        reqPayload));
+                if (cr.getStatus() == ChangeRequestStatus.ADDRESSED && cr.getResolvedAt() != null) {
+                    User resolver = cr.getResolvedByUser();
+                    events.add(new HistoryEventResponse(
+                            HistoryEventKind.RESUBMITTED,
+                            cr.getResolvedAt(),
+                            resolver == null ? null : resolver.getId(),
+                            displayName(resolver),
+                            Map.of("addressedItemCount",
+                                    cr.getItems() == null ? 0 : cr.getItems().size())));
+                }
+            }
+            // Terminal events for this row
+            if (m.getSignedAt() != null) {
+                User signer = m.getProperty().getLandlord() == null
+                        ? null : m.getProperty().getLandlord().getUser();
+                events.add(new HistoryEventResponse(
+                        HistoryEventKind.APPROVED,
+                        m.getSignedAt(),
+                        signer == null ? null : signer.getId(),
+                        displayName(signer),
+                        Map.of("signedName", m.getSignedName() == null ? "" : m.getSignedName())));
+            }
+            if (m.getRejectedAt() != null && m.getWithdrawnAt() == null) {
+                User rejecter = m.getProperty().getLandlord() == null
+                        ? null : m.getProperty().getLandlord().getUser();
+                events.add(new HistoryEventResponse(
+                        HistoryEventKind.REJECTED,
+                        m.getRejectedAt(),
+                        rejecter == null ? null : rejecter.getId(),
+                        displayName(rejecter),
+                        Map.of("reason", m.getRejectionReason() == null ? "" : m.getRejectionReason())));
+            }
+            if (m.getWithdrawnAt() != null) {
+                events.add(new HistoryEventResponse(
+                        HistoryEventKind.WITHDRAWN,
+                        m.getWithdrawnAt(),
+                        m.getWithdrawnByUserId(),
+                        displayName(m.getAgent()),
+                        Map.of("reason", m.getWithdrawnReason() == null ? "" : m.getWithdrawnReason())));
+            }
+        }
+        // Sort oldest-first for top-down rendering.
+        events.sort((a, b) -> a.at().compareTo(b.at()));
+        return new MandateHistoryResponse(events);
+    }
+
+    /**
+     * Agent's inbox — all mandates they issued. Optional status filter
+     * drives the /my-mandates filter chips on the UI.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<MandateResponse> listMineAsAgent(MandateStatus status, int page, int size) {
+        UUID me = security.requireUserId();
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(
+                        Math.max(0, page), Math.max(1, Math.min(size, 100)));
+        org.springframework.data.domain.Page<Mandate> p = status == null
+                ? mandates.findByAgent_IdOrderByUpdatedAtDesc(me, pageable)
+                : mandates.findByAgent_IdAndStatusOrderByUpdatedAtDesc(me, status, pageable);
+        return PageResponse.from(p.map(MandateResponse::from));
+    }
+
+    private static String displayName(User u) {
+        if (u == null) return null;
+        String first = u.getFirstName() == null ? "" : u.getFirstName();
+        String last = u.getSurname() == null ? "" : u.getSurname();
+        String name = (first + " " + last).trim();
+        return name.isEmpty() ? (u.getEmail() == null ? null : u.getEmail()) : name;
     }
 }
