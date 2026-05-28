@@ -3,6 +3,7 @@ package com.habitat.api.service;
 import com.habitat.api.dto.PageResponse;
 import com.habitat.api.dto.mandate.ApproveMandateRequest;
 import com.habitat.api.dto.mandate.MandateResponse;
+import com.habitat.api.dto.mandate.RejectMandateRequest;
 import com.habitat.api.entity.Landlord;
 import com.habitat.api.entity.Mandate;
 import com.habitat.api.entity.Property;
@@ -70,6 +71,8 @@ class MandateServiceTest {
     private static final UUID OWNER_ID   = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final UUID AGENT_ID   = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final ApproveMandateRequest VALID_APPROVE = new ApproveMandateRequest("Naledi Owner");
+    private static final RejectMandateRequest VALID_REJECT =
+            new RejectMandateRequest("Fee too high for tenant-find market.");
 
     // ── approveByLandlord ────────────────────────────────────────────
 
@@ -175,7 +178,7 @@ class MandateServiceTest {
     // ── rejectByLandlord ─────────────────────────────────────────────
 
     @Test
-    void reject_flips_status_to_rejected_and_publishes_event() {
+    void reject_flips_status_and_stores_reason_and_rejected_at_and_publishes_event() {
         User owner = user(OWNER_ID, "Naledi", "Owner");
         Mandate m = mandate(user(AGENT_ID, "Pieter", "Agent"),
                 onlineLandlord(owner), MandateStatus.PENDING_LANDLORD_APPROVAL);
@@ -183,10 +186,26 @@ class MandateServiceTest {
                 .thenReturn(Optional.of(m));
         when(security.requireUserId()).thenReturn(OWNER_ID);
 
-        service.rejectByLandlord(PROP_ID);
+        service.rejectByLandlord(PROP_ID, VALID_REJECT);
 
         assertThat(m.getStatus()).isEqualTo(MandateStatus.REJECTED);
+        assertThat(m.getRejectionReason()).isEqualTo("Fee too high for tenant-find market.");
+        assertThat(m.getRejectedAt()).isNotNull();
         verify(events).publishEvent(any(MandateRejectedEvent.class));
+    }
+
+    @Test
+    void reject_trims_reason_surrounding_whitespace_but_preserves_internal() {
+        User owner = user(OWNER_ID, "Naledi", "Owner");
+        Mandate m = mandate(user(AGENT_ID, "Pieter", "Agent"),
+                onlineLandlord(owner), MandateStatus.PENDING_LANDLORD_APPROVAL);
+        when(mandates.findFirstByProperty_IdOrderByCreatedAtDesc(PROP_ID))
+                .thenReturn(Optional.of(m));
+        when(security.requireUserId()).thenReturn(OWNER_ID);
+
+        service.rejectByLandlord(PROP_ID, new RejectMandateRequest("  Too\n  steep.  "));
+
+        assertThat(m.getRejectionReason()).isEqualTo("Too\n  steep.");
     }
 
     @Test
@@ -198,7 +217,7 @@ class MandateServiceTest {
                 .thenReturn(Optional.of(m));
         when(security.requireUserId()).thenReturn(UUID.randomUUID());
 
-        assertThatThrownBy(() -> service.rejectByLandlord(PROP_ID))
+        assertThatThrownBy(() -> service.rejectByLandlord(PROP_ID, VALID_REJECT))
                 .isInstanceOf(ForbiddenException.class);
         verify(events, never()).publishEvent(any());
     }

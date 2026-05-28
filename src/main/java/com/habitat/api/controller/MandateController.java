@@ -4,6 +4,7 @@ import com.habitat.api.constants.ApiRoutes;
 import com.habitat.api.dto.mandate.ApproveMandateRequest;
 import com.habitat.api.dto.mandate.IssueMandateRequest;
 import com.habitat.api.dto.mandate.MandateResponse;
+import com.habitat.api.dto.mandate.RejectMandateRequest;
 import com.habitat.api.service.BrowserRendererService;
 import com.habitat.api.service.MandateService;
 import com.habitat.api.storage.StoredResource;
@@ -99,10 +100,17 @@ public class MandateController {
         return mandates.approveByLandlord(propertyId, req);
     }
 
-    /** Online landlord rejects the mandate. Same authorization as approve. */
+    /**
+     * Online landlord rejects the mandate with a reason the agent
+     * reads before revising + re-issuing (slice 4). Same authorization
+     * as approve. The DTO enforces a 4–1000 char reason.
+     */
     @PostMapping("/reject")
-    public MandateResponse reject(@PathVariable UUID propertyId) {
-        return mandates.rejectByLandlord(propertyId);
+    public MandateResponse reject(
+            @PathVariable UUID propertyId,
+            @Valid @RequestBody RejectMandateRequest req
+    ) {
+        return mandates.rejectByLandlord(propertyId, req);
     }
 
     /**

@@ -53,7 +53,13 @@ public record MandateResponse(
         String signedName,
         /** Server timestamp of the online approve. Paired with
          *  {@link #signedName}; null when null. */
-        OffsetDateTime signedAt
+        OffsetDateTime signedAt,
+        /** Free-text reason supplied at online-flow reject time.
+         *  Null for non-REJECTED rows and for pre-slice-3 REJECTED rows. */
+        String rejectionReason,
+        /** Server timestamp of the online reject. Paired with
+         *  {@link #rejectionReason}; null when null. */
+        OffsetDateTime rejectedAt
 ) {
     public static MandateResponse from(Mandate m) {
         var property = m.getProperty();
@@ -82,7 +88,9 @@ public record MandateResponse(
                 m.getExpiresAt(),
                 m.getCreatedAt(),
                 m.getSignedName(),
-                m.getSignedAt()
+                m.getSignedAt(),
+                m.getRejectionReason(),
+                m.getRejectedAt()
         );
     }
 }

@@ -125,7 +125,9 @@ class MandatesControllerTest {
                 null,
                 OffsetDateTime.parse("2026-05-28T13:26:27Z"),
                 "Thandi Mokoena",
-                OffsetDateTime.parse("2026-05-28T15:00:00Z")
+                OffsetDateTime.parse("2026-05-28T15:00:00Z"),
+                null,
+                null
         );
     }
 }

@@ -6,6 +6,7 @@ import com.habitat.api.dto.PageResponse;
 import com.habitat.api.dto.mandate.ApproveMandateRequest;
 import com.habitat.api.dto.mandate.IssueMandateRequest;
 import com.habitat.api.dto.mandate.MandateResponse;
+import com.habitat.api.dto.mandate.RejectMandateRequest;
 import com.habitat.api.entity.Landlord;
 import com.habitat.api.entity.Mandate;
 import com.habitat.api.entity.Property;
@@ -226,20 +227,27 @@ public class MandateService {
     }
 
     /**
-     * Online landlord rejects the mandate. Caller must be the
-     * resolved owner User on {@code property.landlord} — anyone
-     * else gets 403. Transitions PENDING_LANDLORD_APPROVAL → REJECTED
-     * and publishes {@link MandateRejectedEvent} so the agent can
-     * follow up out-of-band before re-issuing.
+     * Online landlord rejects the mandate with a free-text reason
+     * that the agent reads before deciding whether to revise + re-issue
+     * (slice 4) or accept the rejection. Caller must be the resolved
+     * owner User on {@code property.landlord} — anyone else gets 403.
+     * The DTO enforces 4–1000 char length via jakarta validation so
+     * a blank submit gets a 422 before it reaches the service.
+     *
+     * <p>Transitions PENDING_LANDLORD_APPROVAL → REJECTED, stores the
+     * reason + server timestamp for the audit trail. Publishes
+     * {@link MandateRejectedEvent} unchanged.
      */
     @Transactional
-    public MandateResponse rejectByLandlord(UUID propertyId) {
+    public MandateResponse rejectByLandlord(UUID propertyId, RejectMandateRequest req) {
         Mandate m = mandates.findFirstByProperty_IdOrderByCreatedAtDesc(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorMessages.MANDATE_NOT_FOUND));
         requireLandlordCaller(m);
         if (m.getStatus() != MandateStatus.PENDING_LANDLORD_APPROVAL) {
             throw new ConflictException(ErrorMessages.MANDATE_NOT_READY_FOR_LANDLORD_DECISION);
         }
+        m.setRejectionReason(req.reason().trim());
+        m.setRejectedAt(OffsetDateTime.now());
         m.setStatus(MandateStatus.REJECTED);
         log.info("mandate {} rejected by landlord — status REJECTED", m.getId());
         events.publishEvent(new MandateRejectedEvent(m.getId()));

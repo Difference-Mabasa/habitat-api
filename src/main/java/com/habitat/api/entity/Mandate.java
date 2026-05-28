@@ -89,4 +89,15 @@ public class Mandate extends BaseEntity {
      *  {@link #signedName}; null when null. */
     @Column(name = "signed_at")
     private OffsetDateTime signedAt;
+
+    /** Free-text reason supplied by the landlord when rejecting from
+     *  /mandate-approvals. Null for pre-slice-3 REJECTED rows and
+     *  for non-REJECTED statuses. */
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
+    /** Server timestamp of the online reject. Paired with
+     *  {@link #rejectionReason}; null when null. */
+    @Column(name = "rejected_at")
+    private OffsetDateTime rejectedAt;
 }
