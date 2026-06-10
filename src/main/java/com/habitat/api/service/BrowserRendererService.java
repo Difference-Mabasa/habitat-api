@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Headless-Chromium PDF pipeline. Boots one Playwright + Browser
@@ -38,6 +39,17 @@ public final class BrowserRendererService {
     private volatile Playwright playwright;
     private volatile Browser browser;
     private final Object initLock = new Object();
+
+    // The Playwright Java client is single-threaded: one shared Browser /
+    // protocol Connection can only be driven by one thread at a time.
+    // Concurrent renders (two detail screens fetching their PDF at once)
+    // otherwise corrupt the connection's object registry — surfacing as
+    // "Cannot find object to call __adopt__" / "Object doesn't exist" and
+    // a 500. Serialise every render through this lock. Renders are
+    // infrequent and short-lived, so queueing is an acceptable trade for
+    // correctness; a pool of single-threaded renderers is the next step if
+    // throughput ever demands it.
+    private final ReentrantLock renderLock = new ReentrantLock();
 
     public BrowserRendererService(@Value("${app.ui.base-url}") String uiBaseUrl) {
         // Strip a trailing slash so callers can pass paths with a
@@ -70,6 +82,7 @@ public final class BrowserRendererService {
     public byte[] renderUrlToPdf(String relativePath, String authorizationHeaderValue) {
         ensureInitialized();
         String url = uiBaseUrl + (relativePath.startsWith("/") ? relativePath : "/" + relativePath);
+        renderLock.lock();
         try (BrowserContext ctx = browser.newContext();
              Page page = ctx.newPage()) {
             if (authorizationHeaderValue != null && !authorizationHeaderValue.isBlank()) {
@@ -83,6 +96,8 @@ public final class BrowserRendererService {
                     .setPrintBackground(true)
                     .setMargin(new Margin().setTop("0").setBottom("0").setLeft("0").setRight("0"))
                     .setPreferCSSPageSize(true));
+        } finally {
+            renderLock.unlock();
         }
     }
 
